@@ -528,6 +528,7 @@ public class LogBuffer {
     public final long getUint32(final int pos) {
         final int position = origin + pos;
 
+        // 这里的buffer是32位，需要4个字节
         if (pos + 3 >= limit || pos < 0) throw new IllegalArgumentException("limit excceed: "
                                                                             + (pos < 0 ? pos : (pos + 3)));
 

@@ -1,19 +1,13 @@
 package com.alibaba.otter.canal.parse.inbound.mysql.local;
 
-import java.io.File;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Timer;
-import java.util.TimerTask;
-import java.util.concurrent.locks.Condition;
-import java.util.concurrent.locks.ReentrantLock;
-
+import com.alibaba.otter.canal.parse.exception.CanalParseException;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.filefilter.IOFileFilter;
 
-import com.alibaba.otter.canal.parse.exception.CanalParseException;
+import java.io.File;
+import java.util.*;
+import java.util.concurrent.locks.Condition;
+import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * 维护binlog文件列表
@@ -73,8 +67,11 @@ public class BinLogFileQueue {
                 if (pre == null) {// 第一次
                     return binlogs.get(0);
                 } else {
+                    // index为当前文件的下标
                     int index = seek(pre);
+                    // 下标在最后一个文件之前，防止下标越界
                     if (index < binlogs.size() - 1) {
+                        // 获取下一个文件
                         return binlogs.get(index + 1);
                     } else {
                         return null;
@@ -89,6 +86,7 @@ public class BinLogFileQueue {
         }
     }
 
+    // 获取上一个文件
     public File getBefore(File file) {
         try {
             lock.lockInterruptibly();

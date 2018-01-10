@@ -1,13 +1,13 @@
 package com.alibaba.otter.canal.client;
 
-import java.net.SocketAddress;
-import java.util.List;
-
 import com.alibaba.otter.canal.client.impl.ClusterCanalConnector;
 import com.alibaba.otter.canal.client.impl.ClusterNodeAccessStrategy;
 import com.alibaba.otter.canal.client.impl.SimpleCanalConnector;
 import com.alibaba.otter.canal.client.impl.SimpleNodeAccessStrategy;
 import com.alibaba.otter.canal.common.zookeeper.ZkClientx;
+
+import java.net.SocketAddress;
+import java.util.List;
 
 /**
  * canal connectors创建工具类
@@ -15,6 +15,7 @@ import com.alibaba.otter.canal.common.zookeeper.ZkClientx;
  * @author jianghang 2012-10-29 下午11:18:50
  * @version 1.0.0
  */
+// canalConnector的工厂类
 public class CanalConnectors {
 
     /**

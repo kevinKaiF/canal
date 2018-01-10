@@ -6,7 +6,8 @@ import com.alibaba.otter.canal.protocol.position.LogPosition;
 
 /**
  * 接口组合
- * 
+ * binlog的position管理器
+ *
  * @author jianghang 2012-7-7 上午10:02:02
  * @version 1.0.0
  */

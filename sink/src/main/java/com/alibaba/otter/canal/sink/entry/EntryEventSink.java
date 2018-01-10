@@ -1,16 +1,5 @@
 package com.alibaba.otter.canal.sink.entry;
 
-import java.net.InetSocketAddress;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.concurrent.atomic.AtomicLong;
-import java.util.concurrent.locks.LockSupport;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.util.Assert;
-import org.springframework.util.CollectionUtils;
-
 import com.alibaba.otter.canal.protocol.CanalEntry;
 import com.alibaba.otter.canal.protocol.CanalEntry.Entry;
 import com.alibaba.otter.canal.protocol.CanalEntry.EntryType;
@@ -21,6 +10,16 @@ import com.alibaba.otter.canal.sink.CanalEventSink;
 import com.alibaba.otter.canal.sink.exception.CanalSinkException;
 import com.alibaba.otter.canal.store.CanalEventStore;
 import com.alibaba.otter.canal.store.model.Event;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.util.Assert;
+import org.springframework.util.CollectionUtils;
+
+import java.net.InetSocketAddress;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.locks.LockSupport;
 
 /**
  * mysql binlog数据对象输出
@@ -48,6 +47,7 @@ public class EntryEventSink extends AbstractCanalEventSink<List<CanalEntry.Entry
         super.start();
         Assert.notNull(eventStore);
 
+        // 启动每个handler
         for (CanalEventDownStreamHandler handler : getHandlers()) {
             if (!handler.isStart()) {
                 handler.start();
@@ -74,9 +74,11 @@ public class EntryEventSink extends AbstractCanalEventSink<List<CanalEntry.Entry
                                                                                                            throws CanalSinkException,
                                                                                                            InterruptedException {
         List rowDatas = entrys;
+        // 是否过滤事物头
         if (filterTransactionEntry) {
             rowDatas = new ArrayList<CanalEntry.Entry>();
             for (CanalEntry.Entry entry : entrys) {
+                // 只拿到行数据
                 if (entry.getEntryType() == EntryType.ROWDATA) {
                     rowDatas.add(entry);
                 }
@@ -86,12 +88,21 @@ public class EntryEventSink extends AbstractCanalEventSink<List<CanalEntry.Entry
         return sinkData(rowDatas, remoteAddress);
     }
 
+    /**
+     *
+     * @param entrys            从binlog读取到的数据
+     * @param remoteAddress     binlog对应的mysql服务器
+     * @return
+     * @throws InterruptedException
+     */
     private boolean sinkData(List<CanalEntry.Entry> entrys, InetSocketAddress remoteAddress)
                                                                                             throws InterruptedException {
         boolean hasRowData = false;
         boolean hasHeartBeat = false;
         List<Event> events = new ArrayList<Event>();
         for (CanalEntry.Entry entry : entrys) {
+            // 将原始的封装
+            // LogIdentity只是记录binlog来源的服务器
             Event event = new Event(new LogIdentity(remoteAddress, -1L), entry);
             if (!doFilter(event)) {
                 continue;
@@ -110,25 +121,36 @@ public class EntryEventSink extends AbstractCanalEventSink<List<CanalEntry.Entry
             return doSink(events);
         } else {
             // 需要过滤的数据
+            // 如果没有rowDATA，也没有heartBeat
+            // 过滤空是无头
             if (filterEmtryTransactionEntry && !CollectionUtils.isEmpty(events)) {
+                // 读取该条binlog数据生成的时间
                 long currentTimestamp = events.get(0).getEntry().getHeader().getExecuteTime();
                 // 基于一定的策略控制，放过空的事务头和尾，便于及时更新数据库位点，表明工作正常
+                // 如果空事务的时间间隔大于自定义的
+                // 或者空事物的累计计数大于阈值
                 if (Math.abs(currentTimestamp - lastEmptyTransactionTimestamp) > emptyTransactionInterval
                     || lastEmptyTransactionCount.incrementAndGet() > emptyTransctionThresold) {
+                    // 清空空事物计数
                     lastEmptyTransactionCount.set(0L);
+                    // 记录最新的空事物时间戳
                     lastEmptyTransactionTimestamp = currentTimestamp;
                     return doSink(events);
                 }
             }
 
             // 直接返回true，忽略空的事务头和尾
+            // 不过任何的数据处理
             return true;
         }
     }
 
     protected boolean doFilter(Event event) {
+        // 如果存在filter，需要对数据进行过滤
         if (filter != null && event.getEntry().getEntryType() == EntryType.ROWDATA) {
+            // 获取表名
             String name = getSchemaNameAndTableName(event.getEntry());
+            // 这里只是按表名进行过滤
             boolean need = filter.filter(name);
             if (!need) {
                 logger.debug("filter name[{}] entry : {}:{}",
@@ -144,21 +166,28 @@ public class EntryEventSink extends AbstractCanalEventSink<List<CanalEntry.Entry
     }
 
     protected boolean doSink(List<Event> events) {
+        // 获取所有的streamHandler，执行前置处理before
+        // 迭代处理
         for (CanalEventDownStreamHandler<List<Event>> handler : getHandlers()) {
             events = handler.before(events);
         }
 
         int fullTimes = 0;
         do {
+            // 将数据添加到store
             if (eventStore.tryPut(events)) {
+                // 添加store完毕后，对store做后置处理
                 for (CanalEventDownStreamHandler<List<Event>> handler : getHandlers()) {
                     events = handler.after(events);
                 }
+                // 处理完一批数据就返回
                 return true;
             } else {
+                // 如果添加到store失败，则等待
                 applyWait(++fullTimes);
             }
 
+            // 再次做尝试处理
             for (CanalEventDownStreamHandler<List<Event>> handler : getHandlers()) {
                 events = handler.retry(events);
             }
@@ -171,6 +200,7 @@ public class EntryEventSink extends AbstractCanalEventSink<List<CanalEntry.Entry
     private void applyWait(int fullTimes) {
         int newFullTimes = fullTimes > maxFullTimes ? maxFullTimes : fullTimes;
         if (fullTimes <= 3) { // 3次以内
+            // 变为runnable状态，等待cpu再次调度
             Thread.yield();
         } else { // 超过3次，最多只sleep 10ms
             LockSupport.parkNanos(1000 * 1000L * newFullTimes);

@@ -8,6 +8,7 @@
 	</parent>
 	<groupId>com.alibaba.otter</groupId>
 	<artifactId>canal.filter</artifactId>
+	<description>filter是简单的对表名的过滤</description>
 	<packaging>jar</packaging>
 	<name>canal sink module for otter ${project.version}</name>
 	<dependencies>

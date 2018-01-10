@@ -8,6 +8,7 @@
 	</parent>
 	<groupId>com.alibaba.otter</groupId>
 	<artifactId>canal.meta</artifactId>
+	<description>meta是对所有客户端订阅信息的管理</description>
 	<packaging>jar</packaging>
 	<name>canal meta module for otter ${project.version}</name>
 	<dependencies>

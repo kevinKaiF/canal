@@ -80,6 +80,7 @@ public class SimpleCanalConnector implements CanalConnector {
         this.username = username;
         this.password = password;
         this.soTimeout = soTimeout;
+        // 默认客户端的id是1001
         this.clientIdentity = new ClientIdentity(destination, (short) 1001);
     }
 

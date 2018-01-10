@@ -77,6 +77,7 @@ public class MysqlConnection implements ErosaConnection {
 
     /**
      * 加速主备切换时的查找速度，做一些特殊优化，比如只解析事务头或者尾
+     * 从指定位置抓取binlog的数据，SinkFunction做回调处理
      */
     public void seek(String binlogfilename, Long binlogPosition, SinkFunction func) throws IOException {
         updateSettings();
@@ -216,6 +217,7 @@ public class MysqlConnection implements ErosaConnection {
      * 获取一下binlog format格式
      */
     private void loadBinlogFormat() {
+        // 发送数据包，查询命令结果
         ResultSetPacket rs = null;
         try {
             rs = query("show variables like 'binlog_format'");

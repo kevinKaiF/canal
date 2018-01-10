@@ -1,18 +1,17 @@
 package com.alibaba.otter.canal.meta;
 
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-
-import org.springframework.util.Assert;
-
 import com.alibaba.otter.canal.meta.exception.CanalMetaManagerException;
 import com.alibaba.otter.canal.protocol.ClientIdentity;
 import com.alibaba.otter.canal.protocol.position.Position;
 import com.alibaba.otter.canal.protocol.position.PositionRange;
 import com.google.common.base.Function;
 import com.google.common.collect.MigrateMap;
+import org.springframework.util.Assert;
+
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 /**
  * 组合memory + zookeeper的使用模式
@@ -20,7 +19,7 @@ import com.google.common.collect.MigrateMap;
  * @author jianghang 2012-7-11 下午03:58:00
  * @version 1.0.0
  */
-
+// 异步更新到zookeeper
 public class MixedMetaManager extends MemoryMetaManager implements CanalMetaManager {
 
     private ExecutorService      executor;

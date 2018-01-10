@@ -8,6 +8,7 @@
 	</parent>
 	<groupId>com.alibaba.otter</groupId>
 	<artifactId>canal.protocol</artifactId>
+	<description>protocol是与binlog服务器通信的数据序列化方式</description>
 	<packaging>jar</packaging>
 	<name>canal protocol module for otter ${project.version}</name>
 	<url>http://b2b-doc.alibaba-inc.com/display/opentech/Otter</url>

@@ -7,6 +7,7 @@
 		<relativePath>../pom.xml</relativePath>
 	</parent>
 	<artifactId>canal.server</artifactId>
+	<description>server是内置的canal服务器</description>
 	<packaging>jar</packaging>
 	<name>canal server module for otter ${project.version}</name>
 	<dependencies>

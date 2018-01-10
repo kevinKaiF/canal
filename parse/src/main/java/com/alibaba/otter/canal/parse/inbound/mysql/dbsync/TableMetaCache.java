@@ -1,13 +1,5 @@
 package com.alibaba.otter.canal.parse.inbound.mysql.dbsync;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
-import org.apache.commons.lang.StringUtils;
-
 import com.alibaba.otter.canal.parse.driver.mysql.packets.server.FieldPacket;
 import com.alibaba.otter.canal.parse.driver.mysql.packets.server.ResultSetPacket;
 import com.alibaba.otter.canal.parse.exception.CanalParseException;
@@ -16,6 +8,13 @@ import com.alibaba.otter.canal.parse.inbound.TableMeta.FieldMeta;
 import com.alibaba.otter.canal.parse.inbound.mysql.MysqlConnection;
 import com.google.common.base.Function;
 import com.google.common.collect.MigrateMap;
+import org.apache.commons.lang.StringUtils;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 /**
  * 处理table meta解析和缓存
@@ -93,6 +92,7 @@ public class TableMetaCache {
         tableMetaCache.clear();
     }
 
+    // 获取表的元数据
     private TableMeta getTableMeta0(String fullname) throws IOException {
         ResultSetPacket packet = connection.query("desc " + fullname);
         return new TableMeta(fullname, parserTableMeta(packet));

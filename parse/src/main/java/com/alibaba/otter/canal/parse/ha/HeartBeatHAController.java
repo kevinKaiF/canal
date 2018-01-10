@@ -13,6 +13,7 @@ import com.alibaba.otter.canal.parse.inbound.HeartBeatCallback;
  * @author jianghang 2012-7-6 下午02:33:30
  * @version 1.0.0
  */
+// 主备切换
 public class HeartBeatHAController extends AbstractCanalLifeCycle implements CanalHAController, HeartBeatCallback {
 
     private static final Logger logger              = LoggerFactory.getLogger(HeartBeatHAController.class);
@@ -30,6 +31,7 @@ public class HeartBeatHAController extends AbstractCanalLifeCycle implements Can
         failedTimes = 0;
     }
 
+    // 如果失败了，则进行主备切换
     public void onFailed(Throwable e) {
         failedTimes++;
         // 检查一下是否超过失败次数

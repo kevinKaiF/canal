@@ -8,6 +8,7 @@
 	</parent>
 	<groupId>com.alibaba.otter</groupId>
 	<artifactId>canal.deployer</artifactId>
+	<description>deployer是与spring整合的启动组件</description>
 	<packaging>jar</packaging>
 	<name>canal deployer module for otter ${project.version}</name>
 	<dependencies>

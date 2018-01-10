@@ -1,17 +1,5 @@
 package com.alibaba.otter.canal.meta;
 
-import java.io.UnsupportedEncodingException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-
-import org.I0Itec.zkclient.exception.ZkNoNodeException;
-import org.I0Itec.zkclient.exception.ZkNodeExistsException;
-import org.apache.commons.lang.StringUtils;
-import org.springframework.util.Assert;
-import org.springframework.util.CollectionUtils;
-
 import com.alibaba.fastjson.serializer.SerializerFeature;
 import com.alibaba.otter.canal.common.AbstractCanalLifeCycle;
 import com.alibaba.otter.canal.common.utils.JsonUtils;
@@ -23,6 +11,17 @@ import com.alibaba.otter.canal.protocol.position.Position;
 import com.alibaba.otter.canal.protocol.position.PositionRange;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
+import org.I0Itec.zkclient.exception.ZkNoNodeException;
+import org.I0Itec.zkclient.exception.ZkNodeExistsException;
+import org.apache.commons.lang.StringUtils;
+import org.springframework.util.Assert;
+import org.springframework.util.CollectionUtils;
+
+import java.io.UnsupportedEncodingException;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
 
 /**
  * zk 版本的 canal manager， 存储结构：
@@ -44,6 +43,7 @@ import com.google.common.collect.Maps;
  * @author jianghang
  * @version 1.0.0
  */
+// 直接更新到zk
 public class ZooKeeperMetaManager extends AbstractCanalLifeCycle implements CanalMetaManager {
 
     private static final String ENCODE = "UTF-8";

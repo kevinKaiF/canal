@@ -128,6 +128,7 @@ public class AbstractCanalInstance extends AbstractCanalLifeCycle implements Can
     protected void beforeStartEventParser(CanalEventParser eventParser) {
 
         boolean isGroup = (eventParser instanceof GroupEventParser);
+        // 如果多个binlog解析，即有多个binlog服务器需要解析
         if (isGroup) {
             // 处理group的模式
             List<CanalEventParser> eventParsers = ((GroupEventParser) eventParser).getEventParsers();
@@ -184,6 +185,7 @@ public class AbstractCanalInstance extends AbstractCanalLifeCycle implements Can
             MysqlEventParser mysqlEventParser = (MysqlEventParser) eventParser;
             CanalHAController haController = mysqlEventParser.getHaController();
 
+            // 如果是HA，需要set解析器eventParser
             if (haController instanceof HeartBeatHAController) {
                 ((HeartBeatHAController) haController).setCanalHASwitchable(mysqlEventParser);
             }

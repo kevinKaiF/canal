@@ -1,5 +1,9 @@
 package com.alibaba.otter.canal.parse.inbound.mysql.dbsync;
 
+import com.taobao.tddl.dbsync.binlog.LogFetcher;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.IOException;
 import java.io.InterruptedIOException;
 import java.net.SocketTimeoutException;
@@ -7,17 +11,13 @@ import java.nio.ByteBuffer;
 import java.nio.channels.ClosedByInterruptException;
 import java.nio.channels.SocketChannel;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import com.taobao.tddl.dbsync.binlog.LogFetcher;
-
 /**
  * 基于socket的logEvent实现
  * 
  * @author jianghang 2013-1-14 下午07:39:30
  * @version 1.0.0
  */
+// binlog数据抓取器
 public class DirectLogFetcher extends LogFetcher {
 
     protected static final Logger logger            = LoggerFactory.getLogger(DirectLogFetcher.class);

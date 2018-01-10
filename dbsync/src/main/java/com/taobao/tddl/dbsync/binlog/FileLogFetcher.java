@@ -1,12 +1,12 @@
 package com.taobao.tddl.dbsync.binlog;
 
+import com.taobao.tddl.dbsync.binlog.event.FormatDescriptionLogEvent;
+
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.Arrays;
-
-import com.taobao.tddl.dbsync.binlog.event.FormatDescriptionLogEvent;
 
 /**
  * TODO: Document It!!
@@ -77,6 +77,7 @@ public final class FileLogFetcher extends LogFetcher {
         ensureCapacity(BIN_LOG_HEADER_SIZE);
         if (BIN_LOG_HEADER_SIZE != fin.read(buffer, 0, BIN_LOG_HEADER_SIZE)) throw new IOException("No binlog file header");
 
+        // 可使用Arrays.equals(buffer, BINLOG_MAGIC);
         if (buffer[0] != BINLOG_MAGIC[0] || buffer[1] != BINLOG_MAGIC[1] || buffer[2] != BINLOG_MAGIC[2]
             || buffer[3] != BINLOG_MAGIC[3]) {
             throw new IOException("Error binlog file header: "

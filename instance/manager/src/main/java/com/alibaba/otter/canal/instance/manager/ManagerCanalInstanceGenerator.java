@@ -10,6 +10,7 @@ import com.alibaba.otter.canal.instance.manager.model.Canal;
  * @author jianghang 2012-7-12 下午05:37:09
  * @version 1.0.0
  */
+// canalInstance工厂
 public class ManagerCanalInstanceGenerator implements CanalInstanceGenerator {
 
     private CanalConfigClient canalConfigClient;

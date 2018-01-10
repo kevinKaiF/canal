@@ -1,21 +1,16 @@
 package com.alibaba.otter.canal.parse.index;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
-
+import com.alibaba.otter.canal.protocol.position.LogPosition;
+import com.google.common.base.Function;
+import com.google.common.collect.MigrateMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.util.Assert;
 
-import com.alibaba.otter.canal.protocol.position.LogPosition;
-import com.google.common.base.Function;
-import com.google.common.collect.MigrateMap;
+import java.util.*;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 /**
  * 基于定时刷新的策略的mixed实现
@@ -23,6 +18,7 @@ import com.google.common.collect.MigrateMap;
  * @author jianghang 2012-9-12 上午11:18:14
  * @version 1.0.0
  */
+// 定时刷新数据到zk
 public class PeriodMixedLogPositionManager extends MemoryLogPositionManager implements CanalLogPositionManager {
 
     private static final Logger         logger       = LoggerFactory.getLogger(PeriodMixedLogPositionManager.class);

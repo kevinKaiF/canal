@@ -1,28 +1,22 @@
 package com.alibaba.otter.canal.parse.index;
 
-import java.io.File;
-import java.io.IOException;
-import java.nio.charset.Charset;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
-
-import org.apache.commons.io.FileUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.util.Assert;
-
 import com.alibaba.otter.canal.common.utils.JsonUtils;
 import com.alibaba.otter.canal.meta.exception.CanalMetaManagerException;
 import com.alibaba.otter.canal.protocol.position.LogPosition;
 import com.google.common.base.Function;
 import com.google.common.collect.MigrateMap;
+import org.apache.commons.io.FileUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.util.Assert;
+
+import java.io.File;
+import java.io.IOException;
+import java.nio.charset.Charset;
+import java.util.*;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 /**
  * 基于文件刷新的log position实现
@@ -36,6 +30,7 @@ import com.google.common.collect.MigrateMap;
  * @author jianghang 2013-4-15 下午09:40:48
  * @version 1.0.4
  */
+// 定时刷新到文件
 public class FileMixedLogPositionManager extends MemoryLogPositionManager {
 
     private static final Logger      logger       = LoggerFactory.getLogger(FileMixedLogPositionManager.class);

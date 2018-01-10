@@ -8,6 +8,7 @@
 	</parent>
 	<groupId>com.alibaba.otter</groupId>
 	<artifactId>canal.store</artifactId>
+	<description>store是将binlog数据接收处理完之后，存储在内存里</description>
 	<packaging>jar</packaging>
 	<name>canal store module for otter ${project.version}</name>
 	<dependencies>

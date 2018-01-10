@@ -58,6 +58,7 @@ public class ClientAuthenticationHandler extends SimpleChannelHandler {
                         clientAuth.getFilter());
                     try {
                         MDC.put("destination", clientIdentity.getDestination());
+                        // 客户端订阅
                         embeddedServer.subscribe(clientIdentity);
                         ctx.setAttachment(clientIdentity);// 设置状态数据
                         // 尝试启动，如果已经启动，忽略

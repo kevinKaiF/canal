@@ -1,13 +1,13 @@
 package com.alibaba.otter.canal.sink.entry.group;
 
+import com.alibaba.otter.canal.store.model.Event;
+
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.PriorityBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
-
-import com.alibaba.otter.canal.store.model.Event;
 
 /**
  * 时间归并控制
@@ -45,6 +45,7 @@ public class TimelineBarrier implements GroupBarrier<Event> {
      * @throws InterruptedException
      */
     public void await(Event event) throws InterruptedException {
+        // 获取binlog event的执行时间戳
         long timestamp = getTimestamp(event);
         try {
             lock.lockInterruptibly();
@@ -126,6 +127,7 @@ public class TimelineBarrier implements GroupBarrier<Event> {
             threshold = timestamp; // 更新为最小值
         }
 
+        // 如果大于批量值，则需要触发notify
         if (lastTimestamps.size() >= groupSize) {// 判断队列是否需要触发
             // 触发下一个出队列的数据
             Long minTimestamp = this.lastTimestamps.peek();

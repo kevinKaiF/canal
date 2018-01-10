@@ -1,15 +1,5 @@
 package com.alibaba.otter.canal.parse.driver.mysql;
 
-import java.io.IOException;
-import java.net.InetSocketAddress;
-import java.nio.ByteBuffer;
-import java.nio.channels.SocketChannel;
-import java.util.concurrent.atomic.AtomicBoolean;
-
-import org.apache.commons.lang.exception.ExceptionUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import com.alibaba.otter.canal.parse.driver.mysql.packets.HeaderPacket;
 import com.alibaba.otter.canal.parse.driver.mysql.packets.client.ClientAuthenticationPacket;
 import com.alibaba.otter.canal.parse.driver.mysql.packets.client.QuitCommandPacket;
@@ -18,6 +8,15 @@ import com.alibaba.otter.canal.parse.driver.mysql.packets.server.HandshakeInitia
 import com.alibaba.otter.canal.parse.driver.mysql.packets.server.Reply323Packet;
 import com.alibaba.otter.canal.parse.driver.mysql.utils.MySQLPasswordEncrypter;
 import com.alibaba.otter.canal.parse.driver.mysql.utils.PacketManager;
+import org.apache.commons.lang.exception.ExceptionUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.io.IOException;
+import java.net.InetSocketAddress;
+import java.nio.ByteBuffer;
+import java.nio.channels.SocketChannel;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * 基于mysql socket协议的链接实现
@@ -158,7 +157,9 @@ public class MysqlConnector {
     }
 
     private void negotiate(SocketChannel channel) throws IOException {
+        // 读取头部数据
         HeaderPacket header = PacketManager.readHeader(channel, 4);
+        // 读取body
         byte[] body = PacketManager.readBytes(channel, header.getPacketBodyLength());
         if (body[0] < 0) {// check field_count
             if (body[0] == -1) {
@@ -171,6 +172,8 @@ public class MysqlConnector {
                 throw new IOException("unpexpected packet with field_count=" + body[0]);
             }
         }
+
+        // 反序列化握手协议数据
         HandshakeInitializationPacket handshakePacket = new HandshakeInitializationPacket();
         handshakePacket.fromBytes(body);
         connectionId = handshakePacket.threadId; // 记录一下connection
@@ -184,19 +187,23 @@ public class MysqlConnector {
         clientAuth.setPassword(password);
         clientAuth.setServerCapabilities(handshakePacket.serverCapabilities);
         clientAuth.setDatabaseName(defaultSchema);
+        // 复制seed和restOfScrambleBuff的数据
         clientAuth.setScrumbleBuff(joinAndCreateScrumbleBuff(handshakePacket));
 
         byte[] clientAuthPkgBody = clientAuth.toBytes();
+        // 序列化ClientAuthenticationPacket的包数据
         HeaderPacket h = new HeaderPacket();
         h.setPacketBodyLength(clientAuthPkgBody.length);
+        // 序列号增1
         h.setPacketSequenceNumber((byte) (header.getPacketSequenceNumber() + 1));
-
+        // 发送头部数据，和clientAuthPkgBody 数据
         PacketManager.write(channel,
             new ByteBuffer[] { ByteBuffer.wrap(h.toBytes()), ByteBuffer.wrap(clientAuthPkgBody) });
         logger.info("client authentication packet is sent out.");
 
         // check auth result
         header = null;
+        // 再次读取服务端的响应
         header = PacketManager.readHeader(channel, 4);
         body = null;
         body = PacketManager.readBytes(channel, header.getPacketBodyLength());

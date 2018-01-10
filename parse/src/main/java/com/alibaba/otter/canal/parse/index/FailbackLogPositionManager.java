@@ -15,6 +15,7 @@ import com.alibaba.otter.canal.protocol.position.LogPosition;
  * 
  * @author jianghang 2012-7-20 下午02:33:20
  */
+// 委托了两个CanalLogPositionManager，如果成功则是primary来处理，失败了是failback来处理
 public class FailbackLogPositionManager extends AbstractCanalLifeCycle implements CanalLogPositionManager {
 
     private CanalLogPositionManager primary;

@@ -1,20 +1,5 @@
 package com.alibaba.otter.canal.parse.inbound;
 
-import java.io.IOException;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Timer;
-import java.util.TimerTask;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicLong;
-
-import org.apache.commons.lang.StringUtils;
-import org.apache.commons.lang.exception.ExceptionUtils;
-import org.apache.commons.lang.math.RandomUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.slf4j.MDC;
-
 import com.alibaba.otter.canal.common.AbstractCanalLifeCycle;
 import com.alibaba.otter.canal.common.alarm.CanalAlarmHandler;
 import com.alibaba.otter.canal.filter.CanalEventFilter;
@@ -34,6 +19,20 @@ import com.alibaba.otter.canal.protocol.position.LogIdentity;
 import com.alibaba.otter.canal.protocol.position.LogPosition;
 import com.alibaba.otter.canal.sink.CanalEventSink;
 import com.alibaba.otter.canal.sink.exception.CanalSinkException;
+import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang.exception.ExceptionUtils;
+import org.apache.commons.lang.math.RandomUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
+
+import java.io.IOException;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Timer;
+import java.util.TimerTask;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * 抽象的EventParser, 最大化共用mysql/oracle版本的实现
@@ -67,6 +66,7 @@ public abstract class AbstractEventParser<EVENT> extends AbstractCanalLifeCycle 
     // binLogParser
     protected BinlogParser                           binlogParser               = null;
 
+    // binlog解析处理线程
     protected Thread                                 parseThread                = null;
 
     protected Thread.UncaughtExceptionHandler        handler                    = new Thread.UncaughtExceptionHandler() {
@@ -109,7 +109,7 @@ public abstract class AbstractEventParser<EVENT> extends AbstractCanalLifeCycle 
     public AbstractEventParser(){
         // 初始化一下
         transactionBuffer = new EventTransactionBuffer(new TransactionFlushCallback() {
-
+            // transaction 已经拿到的内存数据
             public void flush(List<CanalEntry.Entry> transaction) throws InterruptedException {
                 boolean successed = consumeTheEventAndProfilingIfNecessary(transaction);
                 if (!running) {
@@ -120,6 +120,7 @@ public abstract class AbstractEventParser<EVENT> extends AbstractCanalLifeCycle 
                     throw new CanalParseException("consume failed!");
                 }
 
+                // 记录最后一次事务的，并记录其position
                 LogPosition position = buildLastTransactionPosition(transaction);
                 if (position != null) { // 可能position为空
                     logPositionManager.persistLogPosition(AbstractEventParser.this.destination, position);
@@ -133,6 +134,7 @@ public abstract class AbstractEventParser<EVENT> extends AbstractCanalLifeCycle 
         MDC.put("destination", destination);
         // 配置transaction buffer
         // 初始化缓冲队列
+        // transactionSize记录队列的大小
         transactionBuffer.setBufferSize(transactionSize);// 设置buffer大小
         transactionBuffer.start();
         // 构造bin log parser
@@ -167,7 +169,8 @@ public abstract class AbstractEventParser<EVENT> extends AbstractCanalLifeCycle 
                         logger.info("find start position : {}", startPosition.toString());
                         // 重新链接，因为在找position过程中可能有状态，需要断开后重建
                         erosaConnection.reconnect();
-
+                        // erosaConnection给mysql服务端发送dump命令，一直等待接收数据
+                        // sinkHanlder是接收到mysql服务端的数据之后的回调处理
                         final SinkFunction sinkHandler = new SinkFunction<EVENT>() {
 
                             private LogPosition lastPosition;
@@ -182,8 +185,10 @@ public abstract class AbstractEventParser<EVENT> extends AbstractCanalLifeCycle 
 
                                     if (entry != null) {
                                         exception = null; // 有正常数据流过，清空exception
+                                        // 添加到buffer中
                                         transactionBuffer.add(entry);
                                         // 记录一下对应的positions
+                                        // 记录最后一次位置
                                         this.lastPosition = buildLastPosition(entry);
                                         // 记录一下最后一次有数据的时间
                                         lastEntryTime = System.currentTimeMillis();
@@ -220,6 +225,7 @@ public abstract class AbstractEventParser<EVENT> extends AbstractCanalLifeCycle 
                         logger.error(String.format("dump address %s has an error, retrying. caused by ",
                             runningInfo.getAddress().toString()), e);
                     } catch (Throwable e) {
+                        // 打印异常，发送告警
                         processDumpError(e);
                         exception = e;
                         if (!running) {
@@ -305,12 +311,15 @@ public abstract class AbstractEventParser<EVENT> extends AbstractCanalLifeCycle 
             startTs = System.currentTimeMillis();
         }
 
+        // eventSink对数据进行过滤处理，将其存储到eventStore里
+        // result表示是否处理成功
         boolean result = eventSink.sink(entrys, (runningInfo == null) ? null : runningInfo.getAddress(), destination);
 
         if (enabled) {
             this.processingInterval = System.currentTimeMillis() - startTs;
         }
 
+        // 累计处理次数
         if (consumedEventCount.incrementAndGet() < 0) {
             consumedEventCount.set(0);
         }
@@ -324,6 +333,7 @@ public abstract class AbstractEventParser<EVENT> extends AbstractCanalLifeCycle 
         if (enabled) {
             startTs = System.currentTimeMillis();
         }
+        // binlog解析器 解析binlog转为entry对象
         CanalEntry.Entry event = binlogParser.parse(bod);
 
         if (enabled) {

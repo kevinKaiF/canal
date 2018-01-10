@@ -1,15 +1,14 @@
 package com.alibaba.otter.canal.parse.inbound.mysql;
 
-import java.nio.charset.Charset;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import com.alibaba.otter.canal.filter.CanalEventFilter;
 import com.alibaba.otter.canal.filter.aviater.AviaterRegexFilter;
 import com.alibaba.otter.canal.parse.inbound.AbstractEventParser;
 import com.alibaba.otter.canal.parse.inbound.BinlogParser;
 import com.alibaba.otter.canal.parse.inbound.mysql.dbsync.LogEventConvert;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.nio.charset.Charset;
 
 public abstract class AbstractMysqlEventParser extends AbstractEventParser {
 
@@ -25,6 +24,10 @@ public abstract class AbstractMysqlEventParser extends AbstractEventParser {
     protected boolean           filterRows              = false;
     protected boolean           filterTableError        = false;
 
+    /**
+     * 初始化binlog解析器
+     * @return
+     */
     protected BinlogParser buildParser() {
         LogEventConvert convert = new LogEventConvert();
         if (eventFilter != null && eventFilter instanceof AviaterRegexFilter) {

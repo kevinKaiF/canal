@@ -1,23 +1,18 @@
 package com.alibaba.otter.canal.parse.inbound.mysql;
 
-import java.io.File;
-import java.io.IOException;
-import java.util.List;
-
-import org.apache.commons.lang.StringUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import com.alibaba.otter.canal.parse.exception.CanalParseException;
 import com.alibaba.otter.canal.parse.inbound.ErosaConnection;
 import com.alibaba.otter.canal.parse.inbound.SinkFunction;
 import com.alibaba.otter.canal.parse.inbound.mysql.local.BinLogFileQueue;
-import com.taobao.tddl.dbsync.binlog.FileLogFetcher;
-import com.taobao.tddl.dbsync.binlog.LogContext;
-import com.taobao.tddl.dbsync.binlog.LogDecoder;
-import com.taobao.tddl.dbsync.binlog.LogEvent;
-import com.taobao.tddl.dbsync.binlog.LogPosition;
+import com.taobao.tddl.dbsync.binlog.*;
 import com.taobao.tddl.dbsync.binlog.event.QueryLogEvent;
+import org.apache.commons.lang.StringUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.List;
 
 /**
  * local bin log connection (not real connection)
@@ -72,6 +67,13 @@ public class LocalBinLogConnection implements ErosaConnection {
     public void seek(String binlogfilename, Long binlogPosition, SinkFunction func) throws IOException {
     }
 
+    /**
+     * dump作用就是遍历binlog文件，读取数据
+     * @param binlogfilename
+     * @param binlogPosition
+     * @param func
+     * @throws IOException
+     */
     public void dump(String binlogfilename, Long binlogPosition, SinkFunction func) throws IOException {
         File current = new File(directory, binlogfilename);
 

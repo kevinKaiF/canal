@@ -1,38 +1,26 @@
 package com.alibaba.otter.canal.server.netty.handler;
 
-import java.util.List;
-import java.util.concurrent.TimeUnit;
-
+import com.alibaba.otter.canal.common.zookeeper.running.ServerRunningMonitor;
+import com.alibaba.otter.canal.common.zookeeper.running.ServerRunningMonitors;
+import com.alibaba.otter.canal.protocol.CanalEntry.Entry;
+import com.alibaba.otter.canal.protocol.CanalPacket;
+import com.alibaba.otter.canal.protocol.CanalPacket.*;
+import com.alibaba.otter.canal.protocol.ClientIdentity;
+import com.alibaba.otter.canal.protocol.Message;
+import com.alibaba.otter.canal.server.embedded.CanalServerWithEmbedded;
+import com.alibaba.otter.canal.server.netty.NettyUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.exception.ExceptionUtils;
 import org.jboss.netty.buffer.ChannelBuffer;
-import org.jboss.netty.channel.ChannelHandlerContext;
-import org.jboss.netty.channel.ChannelStateEvent;
-import org.jboss.netty.channel.ExceptionEvent;
-import org.jboss.netty.channel.MessageEvent;
-import org.jboss.netty.channel.SimpleChannelHandler;
+import org.jboss.netty.channel.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
 import org.slf4j.helpers.MessageFormatter;
 import org.springframework.util.CollectionUtils;
 
-import com.alibaba.otter.canal.common.zookeeper.running.ServerRunningMonitor;
-import com.alibaba.otter.canal.common.zookeeper.running.ServerRunningMonitors;
-import com.alibaba.otter.canal.protocol.CanalEntry.Entry;
-import com.alibaba.otter.canal.protocol.CanalPacket;
-import com.alibaba.otter.canal.protocol.CanalPacket.ClientAck;
-import com.alibaba.otter.canal.protocol.CanalPacket.ClientRollback;
-import com.alibaba.otter.canal.protocol.CanalPacket.Get;
-import com.alibaba.otter.canal.protocol.CanalPacket.Messages;
-import com.alibaba.otter.canal.protocol.CanalPacket.Packet;
-import com.alibaba.otter.canal.protocol.CanalPacket.PacketType;
-import com.alibaba.otter.canal.protocol.CanalPacket.Sub;
-import com.alibaba.otter.canal.protocol.CanalPacket.Unsub;
-import com.alibaba.otter.canal.protocol.ClientIdentity;
-import com.alibaba.otter.canal.protocol.Message;
-import com.alibaba.otter.canal.server.embedded.CanalServerWithEmbedded;
-import com.alibaba.otter.canal.server.netty.NettyUtils;
+import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 /**
  * 处理具体的客户端请求
@@ -55,11 +43,13 @@ public class SessionHandler extends SimpleChannelHandler {
     public void messageReceived(ChannelHandlerContext ctx, MessageEvent e) throws Exception {
         logger.info("message receives in session handler...");
         ChannelBuffer buffer = (ChannelBuffer) e.getMessage();
+        // 解析客户端的请求数据，封装成packet
         Packet packet = Packet.parseFrom(buffer.readBytes(buffer.readableBytes()).array());
         ClientIdentity clientIdentity = null;
         try {
             switch (packet.getType()) {
                 case SUBSCRIPTION:
+                    // 解析sub
                     Sub sub = Sub.parseFrom(packet.getBody());
                     if (StringUtils.isNotEmpty(sub.getDestination()) && StringUtils.isNotEmpty(sub.getClientId())) {
                         clientIdentity = new ClientIdentity(sub.getDestination(),
@@ -86,6 +76,7 @@ public class SessionHandler extends SimpleChannelHandler {
                     }
                     break;
                 case UNSUBSCRIPTION:
+                    // 解析unsub
                     Unsub unsub = Unsub.parseFrom(packet.getBody());
                     if (StringUtils.isNotEmpty(unsub.getDestination()) && StringUtils.isNotEmpty(unsub.getClientId())) {
                         clientIdentity = new ClientIdentity(unsub.getDestination(),
@@ -103,6 +94,7 @@ public class SessionHandler extends SimpleChannelHandler {
                     }
                     break;
                 case GET:
+                    // 解析get
                     Get get = CanalPacket.Get.parseFrom(packet.getBody());
                     if (StringUtils.isNotEmpty(get.getDestination()) && StringUtils.isNotEmpty(get.getClientId())) {
                         clientIdentity = new ClientIdentity(get.getDestination(), Short.valueOf(get.getClientId()));
@@ -141,6 +133,7 @@ public class SessionHandler extends SimpleChannelHandler {
                             }
                         }
                         packetBuilder.setBody(messageBuilder.build().toByteString());
+                        // 写出读取的数据
                         NettyUtils.write(ctx.getChannel(), packetBuilder.build().toByteArray(), null);// 输出数据
                     } else {
                         NettyUtils.error(401,
@@ -150,6 +143,7 @@ public class SessionHandler extends SimpleChannelHandler {
                     }
                     break;
                 case CLIENTACK:
+                    // 解析ack
                     ClientAck ack = CanalPacket.ClientAck.parseFrom(packet.getBody());
                     MDC.put("destination", ack.getDestination());
                     if (StringUtils.isNotEmpty(ack.getDestination()) && StringUtils.isNotEmpty(ack.getClientId())) {
@@ -172,6 +166,7 @@ public class SessionHandler extends SimpleChannelHandler {
                     }
                     break;
                 case CLIENTROLLBACK:
+                    // 解析rollback
                     ClientRollback rollback = CanalPacket.ClientRollback.parseFrom(packet.getBody());
                     MDC.put("destination", rollback.getDestination());
                     if (StringUtils.isNotEmpty(rollback.getDestination())

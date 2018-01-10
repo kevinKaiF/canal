@@ -18,6 +18,7 @@ public interface IPacket {
      * 
      * @param data, the raw byte data received from networking
      */
+    // 反序列化
     void fromBytes(byte[] data) throws IOException;
 
     /**
@@ -26,5 +27,6 @@ public interface IPacket {
      * 
      * @return the bytes that's collected from {@link IPacket} state
      */
+    // 序列化
     byte[] toBytes() throws IOException;
 }

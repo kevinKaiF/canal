@@ -1,15 +1,14 @@
 package com.alibaba.otter.canal.parse.inbound;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.concurrent.atomic.AtomicLong;
-
-import org.springframework.util.Assert;
-
 import com.alibaba.otter.canal.common.AbstractCanalLifeCycle;
 import com.alibaba.otter.canal.protocol.CanalEntry;
 import com.alibaba.otter.canal.protocol.CanalEntry.EventType;
 import com.alibaba.otter.canal.store.CanalStoreException;
+import org.springframework.util.Assert;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * 缓冲event队列，提供按事务刷新数据的机制
@@ -24,9 +23,13 @@ public class EventTransactionBuffer extends AbstractCanalLifeCycle {
     private int                      indexMask;
     private CanalEntry.Entry[]       entries;
 
+    // putSequence记录写入位置
     private AtomicLong               putSequence   = new AtomicLong(INIT_SQEUENCE); // 代表当前put操作最后一次写操作发生的位置
+    // flushSequence记录读取位置
     private AtomicLong               flushSequence = new AtomicLong(INIT_SQEUENCE); // 代表满足flush条件后最后一次数据flush的时间
 
+    // 当数据量达到bufferSize的时候，进行flushCallback
+    // flushCallback定义了数据的回调处理
     private TransactionFlushCallback flushCallback;
 
     public EventTransactionBuffer(){

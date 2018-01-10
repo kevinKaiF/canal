@@ -8,6 +8,7 @@
 	</parent>
 	<groupId>com.alibaba.otter</groupId>
 	<artifactId>canal.instance</artifactId>
+	<description>instance是一条完整的binlog的解析对象</description>
 	<packaging>pom</packaging>
 	<name>canal instance module for otter ${project.version}</name>
 	

@@ -1,11 +1,11 @@
 package com.alibaba.otter.canal.sink.entry.group;
 
-import java.util.Arrays;
-import java.util.List;
-
 import com.alibaba.otter.canal.sink.CanalEventDownStreamHandler;
 import com.alibaba.otter.canal.sink.entry.EntryEventSink;
 import com.alibaba.otter.canal.store.model.Event;
+
+import java.util.Arrays;
+import java.util.List;
 
 /**
  * 基于归并排序的sink处理
@@ -36,7 +36,7 @@ public class GroupEventSink extends EntryEventSink {
 
     public void start() {
         super.start();
-
+        // 过滤事务，默认不过滤事务
         if (filterTransactionEntry) {
             barrier = new TimelineBarrier(groupSize);
         } else {

@@ -8,6 +8,7 @@
 	</parent>
 	<groupId>com.alibaba.otter</groupId>
 	<artifactId>canal.parse.driver</artifactId>
+	<description>driver是与binlog服务器通信的组件</description>
 	<packaging>jar</packaging>
 	<name>canal driver module for otter ${project.version}</name>
 	<dependencies>

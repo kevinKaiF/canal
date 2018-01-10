@@ -6,6 +6,7 @@ package com.alibaba.otter.canal.parse.driver.mysql.utils;
  * 
  * @author fujohnwang
  */
+// mysql常量
 public abstract class MSC {
 
     public static final int  MAX_PACKET_LENGTH                  = (1 << 24);

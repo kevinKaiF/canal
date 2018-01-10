@@ -1,15 +1,14 @@
 package com.alibaba.otter.canal.parse.index;
 
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-
+import com.alibaba.otter.canal.protocol.position.LogPosition;
+import com.google.common.base.Function;
+import com.google.common.collect.MigrateMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.util.Assert;
 
-import com.alibaba.otter.canal.protocol.position.LogPosition;
-import com.google.common.base.Function;
-import com.google.common.collect.MigrateMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 /**
  * 混合memory + zookeeper的存储模式
@@ -17,6 +16,7 @@ import com.google.common.collect.MigrateMap;
  * @author jianghang 2012-7-7 上午10:33:19
  * @version 1.0.0
  */
+// 手动异步刷新position到zk
 public class MixedLogPositionManager extends MemoryLogPositionManager implements CanalLogPositionManager {
 
     private static final Logger         logger       = LoggerFactory.getLogger(MixedLogPositionManager.class);

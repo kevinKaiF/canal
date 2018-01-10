@@ -1,18 +1,5 @@
 package com.alibaba.otter.canal.parse.inbound.mysql;
 
-import java.io.IOException;
-import java.net.SocketTimeoutException;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.TimerTask;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicLong;
-
-import org.apache.commons.lang.StringUtils;
-import org.apache.commons.lang.exception.ExceptionUtils;
-import org.springframework.util.CollectionUtils;
-
 import com.alibaba.otter.canal.parse.CanalEventParser;
 import com.alibaba.otter.canal.parse.CanalHASwitchable;
 import com.alibaba.otter.canal.parse.driver.mysql.packets.server.FieldPacket;
@@ -31,6 +18,18 @@ import com.alibaba.otter.canal.protocol.CanalEntry;
 import com.alibaba.otter.canal.protocol.position.EntryPosition;
 import com.alibaba.otter.canal.protocol.position.LogPosition;
 import com.taobao.tddl.dbsync.binlog.LogEvent;
+import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang.exception.ExceptionUtils;
+import org.springframework.util.CollectionUtils;
+
+import java.io.IOException;
+import java.net.SocketTimeoutException;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.TimerTask;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * 基于向mysql server复制binlog实现
@@ -88,6 +87,7 @@ public class MysqlEventParser extends AbstractMysqlEventParser implements CanalE
             }
 
             if (supportBinlogFormats != null && supportBinlogFormats.length > 0) {
+                // 获取服务端binlog的类型
                 BinlogFormat format = ((MysqlConnection) metaConnection).getBinlogFormat();
                 boolean found = false;
                 for (BinlogFormat supportFormat : supportBinlogFormats) {
@@ -96,6 +96,7 @@ public class MysqlEventParser extends AbstractMysqlEventParser implements CanalE
                     }
                 }
 
+                // 如果不支持，抛出异常
                 if (!found) {
                     throw new CanalParseException("Unsupported BinlogFormat " + format);
                 }
@@ -115,6 +116,7 @@ public class MysqlEventParser extends AbstractMysqlEventParser implements CanalE
                 }
             }
 
+            // 缓存，用于查询对应表的元数据
             tableMetaCache = new TableMetaCache(metaConnection);
             ((LogEventConvert) binlogParser).setTableMetaCache(tableMetaCache);
         }
@@ -226,6 +228,7 @@ public class MysqlEventParser extends AbstractMysqlEventParser implements CanalE
                     mysqlConnection.update(detectingSQL);
                 }
 
+                // 每次心跳，执行一次简单的sql
                 Long costTime = System.currentTimeMillis() - startTime;
                 if (haController != null && haController instanceof HeartBeatCallback) {
                     ((HeartBeatCallback) haController).onSuccess(costTime);
@@ -333,9 +336,11 @@ public class MysqlEventParser extends AbstractMysqlEventParser implements CanalE
 
     protected EntryPosition findStartPositionInternal(ErosaConnection connection) {
         MysqlConnection mysqlConnection = (MysqlConnection) connection;
+        // 从positionManager查找位置
         LogPosition logPosition = logPositionManager.getLatestIndexBy(destination);
         if (logPosition == null) {// 找不到历史成功记录
             EntryPosition entryPosition = null;
+            // 如果是masterInfo对应的地址
             if (masterInfo != null && mysqlConnection.getConnector().getAddress().equals(masterInfo.getAddress())) {
                 entryPosition = masterPosition;
             } else if (standbyInfo != null
@@ -344,21 +349,26 @@ public class MysqlEventParser extends AbstractMysqlEventParser implements CanalE
             }
 
             if (entryPosition == null) {
+                // 找到最新的位置
                 entryPosition = findEndPosition(mysqlConnection); // 默认从当前最后一个位置进行消费
             }
 
             // 判断一下是否需要按时间订阅
+            // 如果binlog的文件名是空的
             if (StringUtils.isEmpty(entryPosition.getJournalName())) {
                 // 如果没有指定binlogName，尝试按照timestamp进行查找
                 if (entryPosition.getTimestamp() != null && entryPosition.getTimestamp() > 0L) {
                     logger.warn("prepare to find start position {}:{}:{}",
                         new Object[] { "", "", entryPosition.getTimestamp() });
+                    // 按时间戳查找
                     return findByStartTimeStamp(mysqlConnection, entryPosition.getTimestamp());
                 } else {
                     logger.warn("prepare to find start position just show master status");
+                    // 如果没有时间戳，找到最新的位置
                     return findEndPosition(mysqlConnection); // 默认从当前最后一个位置进行消费
                 }
             } else {
+                // 找到了就返回
                 if (entryPosition.getPosition() != null && entryPosition.getPosition() > 0L) {
                     // 如果指定binlogName + offest，直接返回
                     logger.warn("prepare to find start position {}:{}:{}",
@@ -390,6 +400,7 @@ public class MysqlEventParser extends AbstractMysqlEventParser implements CanalE
                 }
             }
         } else {
+            // 如果记录的binlog服务器地址一致
             if (logPosition.getIdentity().getSourceAddress().equals(mysqlConnection.getConnector().getAddress())) {
                 if (dumpErrorCountThreshold >= 0 && dumpErrorCount > dumpErrorCountThreshold) {
                     // binlog定位位点失败,可能有两个原因:
@@ -399,6 +410,7 @@ public class MysqlEventParser extends AbstractMysqlEventParser implements CanalE
                                     && logPosition.getPostion().getServerId() != null
                                     && !logPosition.getPostion().getServerId().equals(findServerId(mysqlConnection));
                     if (case2) {
+                        // 回退时间戳，找到对应的position
                         long timestamp = logPosition.getPostion().getTimestamp();
                         long newStartTimestamp = timestamp - fallbackIntervalInSeconds * 1000;
                         logger.warn("prepare to find start position by last position {}:{}:{}", new Object[] { "", "",

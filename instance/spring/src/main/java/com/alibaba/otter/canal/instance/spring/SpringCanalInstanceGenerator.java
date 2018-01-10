@@ -11,6 +11,7 @@ import com.alibaba.otter.canal.instance.core.CanalInstanceGenerator;
  * @author zebin.xuzb @ 2012-7-12
  * @version 1.0.0
  */
+// 从spring容器中获取指定的instance
 public class SpringCanalInstanceGenerator implements CanalInstanceGenerator, BeanFactoryAware {
 
     private String      defaultName = "instance";

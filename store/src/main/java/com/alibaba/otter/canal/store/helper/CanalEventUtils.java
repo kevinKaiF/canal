@@ -86,7 +86,9 @@ public class CanalEventUtils {
 
         boolean exactely = (StringUtils.isBlank(position.getJournalName()) && position.getPosition() == null);
         if (!exactely) {// 精确匹配
+            // binlog的文件名相同
             result &= StringUtils.equals(entry.getHeader().getLogfileName(), position.getJournalName());
+            // position的位置相同
             result &= position.getPosition().equals(entry.getHeader().getLogfileOffset());
         }
 

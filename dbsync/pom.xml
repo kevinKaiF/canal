@@ -8,6 +8,7 @@
 	</parent>
 	<groupId>com.alibaba.otter</groupId>
 	<artifactId>canal.parse.dbsync</artifactId>
+	<description>dbsync是对binlog每个事件的解析处理组件</description>
 	<packaging>jar</packaging>
 	<name>canal dbsync module for otter ${project.version}</name>
 	<dependencies>

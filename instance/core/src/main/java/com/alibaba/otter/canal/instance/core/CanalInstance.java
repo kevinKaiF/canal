@@ -15,21 +15,26 @@ import com.alibaba.otter.canal.store.CanalEventStore;
  * @version 1.0.0
  */
 public interface CanalInstance extends CanalLifeCycle {
-
+    // binlog的服务器
     String getDestination();
-
+    // binlog解析处理，再加工
     CanalEventParser getEventParser();
 
+    // binlog数据的过滤处理
     CanalEventSink getEventSink();
 
+    // binlog数据加工后的存储地址
     CanalEventStore getEventStore();
 
+    // 客户端订阅的管理器
     CanalMetaManager getMetaManager();
 
+    // 告警
     CanalAlarmHandler getAlarmHandler();
 
     /**
      * 客户端发生订阅/取消订阅行为
      */
+    // 客户端是否有订阅
     boolean subscribeChange(ClientIdentity identity);
 }

@@ -1,11 +1,5 @@
 package com.alibaba.otter.canal.meta;
 
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.atomic.AtomicLong;
-
 import com.alibaba.otter.canal.common.AbstractCanalLifeCycle;
 import com.alibaba.otter.canal.meta.exception.CanalMetaManagerException;
 import com.alibaba.otter.canal.protocol.ClientIdentity;
@@ -16,6 +10,12 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.MapMaker;
 import com.google.common.collect.Maps;
 import com.google.common.collect.MigrateMap;
+
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * 内存版实现
@@ -60,6 +60,14 @@ public class MemoryMetaManager extends AbstractCanalLifeCycle implements CanalMe
         }
     }
 
+    /**
+     * ClientIdentity是客户端的订阅信息，
+     * destination指定订阅的服务器的地址
+     * clientId指定了客户端自己的id,这个需要客户端自己维护
+     *
+     * @param clientIdentity
+     * @throws CanalMetaManagerException
+     */
     public synchronized void subscribe(ClientIdentity clientIdentity) throws CanalMetaManagerException {
         List<ClientIdentity> clientIdentitys = destinations.get(clientIdentity.getDestination());
 
@@ -82,18 +90,47 @@ public class MemoryMetaManager extends AbstractCanalLifeCycle implements CanalMe
         }
     }
 
+    /**
+     * 获取destination下所有的订阅的客户端
+     *
+     * @param destination
+     * @return
+     * @throws CanalMetaManagerException
+     */
     public synchronized List<ClientIdentity> listAllSubscribeInfo(String destination) throws CanalMetaManagerException {
         return destinations.get(destination);
     }
 
+    /**
+     * 获取每个客户端消费的position
+     *
+     * @param clientIdentity
+     * @return
+     * @throws CanalMetaManagerException
+     */
     public Position getCursor(ClientIdentity clientIdentity) throws CanalMetaManagerException {
         return cursors.get(clientIdentity);
     }
 
+    /**
+     * 更新客户端消费的position
+     *
+     * @param clientIdentity
+     * @param position
+     * @throws CanalMetaManagerException
+     */
     public void updateCursor(ClientIdentity clientIdentity, Position position) throws CanalMetaManagerException {
         cursors.put(clientIdentity, position);
     }
 
+    /**
+     * 保存每个客户端的批量的信息
+     *
+     * @param clientIdentity
+     * @param positionRange
+     * @return
+     * @throws CanalMetaManagerException
+     */
     public Long addBatch(ClientIdentity clientIdentity, PositionRange positionRange) throws CanalMetaManagerException {
         return batches.get(clientIdentity).addPositionRange(positionRange);
     }

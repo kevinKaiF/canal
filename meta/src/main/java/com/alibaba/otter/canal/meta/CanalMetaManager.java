@@ -1,13 +1,13 @@
 package com.alibaba.otter.canal.meta;
 
-import java.util.List;
-import java.util.Map;
-
 import com.alibaba.otter.canal.common.CanalLifeCycle;
 import com.alibaba.otter.canal.meta.exception.CanalMetaManagerException;
 import com.alibaba.otter.canal.protocol.ClientIdentity;
 import com.alibaba.otter.canal.protocol.position.Position;
 import com.alibaba.otter.canal.protocol.position.PositionRange;
+
+import java.util.List;
+import java.util.Map;
 
 /**
  * meta信息管理器
@@ -15,7 +15,9 @@ import com.alibaba.otter.canal.protocol.position.PositionRange;
  * @author jianghang 2012-6-14 下午09:28:48
  * @author zebin.xuzb
  * @version 1.0.0
+ *
  */
+// 记录所有客户端的消费信息
 public interface CanalMetaManager extends CanalLifeCycle {
 
     /**
