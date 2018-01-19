@@ -78,6 +78,7 @@ public abstract class AbstractEventParser<EVENT> extends AbstractCanalLifeCycle 
                                                                                     }
                                                                                 };
 
+    // eventTransactionBuffer 用于缓存完整的事务数据
     protected EventTransactionBuffer                 transactionBuffer;
     protected int                                    transactionSize            = 1024;
     protected AtomicBoolean                          needTransactionPosition    = new AtomicBoolean(false);
