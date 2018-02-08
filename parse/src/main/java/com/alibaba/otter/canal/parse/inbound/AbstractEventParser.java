@@ -1,5 +1,20 @@
 package com.alibaba.otter.canal.parse.inbound;
 
+import java.io.IOException;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Timer;
+import java.util.TimerTask;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
+
+import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang.exception.ExceptionUtils;
+import org.apache.commons.lang.math.RandomUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
+
 import com.alibaba.otter.canal.common.AbstractCanalLifeCycle;
 import com.alibaba.otter.canal.common.alarm.CanalAlarmHandler;
 import com.alibaba.otter.canal.filter.CanalEventFilter;
@@ -19,20 +34,6 @@ import com.alibaba.otter.canal.protocol.position.LogIdentity;
 import com.alibaba.otter.canal.protocol.position.LogPosition;
 import com.alibaba.otter.canal.sink.CanalEventSink;
 import com.alibaba.otter.canal.sink.exception.CanalSinkException;
-import org.apache.commons.lang.StringUtils;
-import org.apache.commons.lang.exception.ExceptionUtils;
-import org.apache.commons.lang.math.RandomUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.slf4j.MDC;
-
-import java.io.IOException;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Timer;
-import java.util.TimerTask;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * 抽象的EventParser, 最大化共用mysql/oracle版本的实现
@@ -98,6 +99,10 @@ public abstract class AbstractEventParser<EVENT> extends AbstractCanalLifeCycle 
     protected void preDump(ErosaConnection connection) {
     }
 
+    protected boolean processTableMeta(EntryPosition position) {
+        return true;
+    }
+
     protected void afterDump(ErosaConnection connection) {
     }
 
@@ -149,7 +154,6 @@ public abstract class AbstractEventParser<EVENT> extends AbstractCanalLifeCycle 
                 ErosaConnection erosaConnection = null;
                 while (running) {
                     try {
-
                         // 开始执行replication
                         // 1. 构造Erosa连接
                         erosaConnection = buildErosaConnection();
@@ -167,6 +171,11 @@ public abstract class AbstractEventParser<EVENT> extends AbstractCanalLifeCycle 
                         if (startPosition == null) {
                             throw new CanalParseException("can't find start position for " + destination);
                         }
+
+                        if (!processTableMeta(startPosition)) {
+                            throw new CanalParseException("can't find init table meta for " + destination
+                                                          + " with position : " + startPosition);
+                        }
                         logger.info("find start position : {}", startPosition.toString());
                         // 重新链接，因为在找position过程中可能有状态，需要断开后重建
                         erosaConnection.reconnect();
@@ -178,7 +187,7 @@ public abstract class AbstractEventParser<EVENT> extends AbstractCanalLifeCycle 
 
                             public boolean sink(EVENT event) {
                                 try {
-                                    CanalEntry.Entry entry = parseAndProfilingIfNecessary(event);
+                                    CanalEntry.Entry entry = parseAndProfilingIfNecessary(event, false);
 
                                     if (!running) {
                                         return false;
@@ -198,6 +207,9 @@ public abstract class AbstractEventParser<EVENT> extends AbstractCanalLifeCycle 
                                 } catch (TableIdNotFoundException e) {
                                     throw e;
                                 } catch (Throwable e) {
+                                    if (e.getCause() instanceof TableIdNotFoundException) {
+                                        throw (TableIdNotFoundException) e.getCause();
+                                    }
                                     // 记录一下，出错的位点信息
                                     processSinkError(e,
                                         this.lastPosition,
@@ -280,7 +292,7 @@ public abstract class AbstractEventParser<EVENT> extends AbstractCanalLifeCycle 
         parseThread.setUncaughtExceptionHandler(handler);
         parseThread.setName(String.format("destination = %s , address = %s , EventParser",
             destination,
-            runningInfo == null ? null : runningInfo.getAddress().toString()));
+            runningInfo == null ? null : runningInfo.getAddress()));
         parseThread.start();
     }
 
@@ -328,15 +340,14 @@ public abstract class AbstractEventParser<EVENT> extends AbstractCanalLifeCycle 
         return result;
     }
 
-    protected CanalEntry.Entry parseAndProfilingIfNecessary(EVENT bod) throws Exception {
+    protected CanalEntry.Entry parseAndProfilingIfNecessary(EVENT bod, boolean isSeek) throws Exception {
         long startTs = -1;
         boolean enabled = getProfilingEnabled();
         if (enabled) {
             startTs = System.currentTimeMillis();
         }
         // binlog解析器 解析binlog转为entry对象
-        CanalEntry.Entry event = binlogParser.parse(bod);
-
+        CanalEntry.Entry event = binlogParser.parse(bod, isSeek);
         if (enabled) {
             this.parsingInterval = System.currentTimeMillis() - startTs;
         }
@@ -399,7 +410,11 @@ public abstract class AbstractEventParser<EVENT> extends AbstractCanalLifeCycle 
             String name = String.format("destination = %s , address = %s , HeartBeatTimeTask",
                 destination,
                 runningInfo == null ? null : runningInfo.getAddress().toString());
-            synchronized (MysqlEventParser.class) {
+            synchronized (AbstractEventParser.class) {
+                // synchronized (MysqlEventParser.class) {
+                // why use MysqlEventParser.class, u know, MysqlEventParser is
+                // the child class 4 AbstractEventParser,
+                // do this is ...
                 if (timer == null) {
                     timer = new Timer(name, true);
                 }
@@ -436,7 +451,7 @@ public abstract class AbstractEventParser<EVENT> extends AbstractCanalLifeCycle 
                     }
 
                 } catch (Throwable e) {
-                    logger.warn("heartBeat run failed " + ExceptionUtils.getStackTrace(e));
+                    logger.warn("heartBeat run failed ", e);
                 }
             }
 

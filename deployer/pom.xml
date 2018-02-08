@@ -3,12 +3,11 @@
 	<parent>
 		<groupId>com.alibaba.otter</groupId>
 		<artifactId>canal</artifactId>
-		<version>1.0.23-SNAPSHOT</version>
+		<version>1.0.26-SNAPSHOT</version>
 		<relativePath>../pom.xml</relativePath>
 	</parent>
 	<groupId>com.alibaba.otter</groupId>
 	<artifactId>canal.deployer</artifactId>
-	<description>deployer是与spring整合的启动组件</description>
 	<packaging>jar</packaging>
 	<name>canal deployer module for otter ${project.version}</name>
 	<dependencies>

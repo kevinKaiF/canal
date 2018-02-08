@@ -3,12 +3,11 @@
 	<parent>
 		<groupId>com.alibaba.otter</groupId>
 		<artifactId>canal</artifactId>
-		<version>1.0.23-SNAPSHOT</version>
+		<version>1.0.26-SNAPSHOT</version>
 		<relativePath>../pom.xml</relativePath>
 	</parent>
 	<groupId>com.alibaba.otter</groupId>
 	<artifactId>canal.parse.dbsync</artifactId>
-	<description>dbsync是对binlog每个事件的解析处理组件</description>
 	<packaging>jar</packaging>
 	<name>canal dbsync module for otter ${project.version}</name>
 	<dependencies>

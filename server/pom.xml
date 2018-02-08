@@ -3,11 +3,10 @@
 	<parent>
 		<groupId>com.alibaba.otter</groupId>
 		<artifactId>canal</artifactId>
-		<version>1.0.23-SNAPSHOT</version>
+		<version>1.0.26-SNAPSHOT</version>
 		<relativePath>../pom.xml</relativePath>
 	</parent>
 	<artifactId>canal.server</artifactId>
-	<description>server是内置的canal服务器</description>
 	<packaging>jar</packaging>
 	<name>canal server module for otter ${project.version}</name>
 	<dependencies>

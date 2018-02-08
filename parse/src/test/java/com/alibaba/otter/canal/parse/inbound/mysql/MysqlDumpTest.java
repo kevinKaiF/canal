@@ -5,11 +5,12 @@ import java.nio.charset.Charset;
 import java.util.List;
 
 import org.junit.Assert;
-
 import org.junit.Test;
 
+import com.alibaba.otter.canal.filter.aviater.AviaterRegexFilter;
+import com.alibaba.otter.canal.parse.exception.CanalParseException;
+import com.alibaba.otter.canal.parse.index.AbstractLogPositionManager;
 import com.alibaba.otter.canal.parse.stub.AbstractCanalEventSinkTest;
-import com.alibaba.otter.canal.parse.stub.AbstractCanalLogPositionManager;
 import com.alibaba.otter.canal.parse.support.AuthenticationInfo;
 import com.alibaba.otter.canal.protocol.CanalEntry.Column;
 import com.alibaba.otter.canal.protocol.CanalEntry.Entry;
@@ -26,13 +27,18 @@ public class MysqlDumpTest {
     @Test
     public void testSimple() {
         final MysqlEventParser controller = new MysqlEventParser();
-        final EntryPosition startPosition = new EntryPosition("mysql-bin.000003", 4L);
+        final EntryPosition startPosition = new EntryPosition("mysql-bin.000001", 104606L);
 
         controller.setConnectionCharset(Charset.forName("UTF-8"));
         controller.setSlaveId(3344L);
         controller.setDetectingEnable(false);
-        controller.setMasterInfo(new AuthenticationInfo(new InetSocketAddress("127.0.0.1", 3306), "xxxxx", "xxxxx"));
+        controller.setMasterInfo(new AuthenticationInfo(new InetSocketAddress("127.0.0.1", 3306), "canal", "canal"));
         controller.setMasterPosition(startPosition);
+        controller.setEnableTsdb(true);
+        controller.setDestination("example");
+        controller.setTsdbSpringXml("classpath:tsdb/h2-tsdb.xml");
+        controller.setEventFilter(new AviaterRegexFilter("test\\..*"));
+        controller.setEventBlackFilter(new AviaterRegexFilter("canal_tsdb\\..*"));
         controller.setEventSink(new AbstractCanalEventSinkTest<List<Entry>>() {
 
             public boolean sink(List<Entry> entrys, InetSocketAddress remoteAddress, String destination)
@@ -84,22 +90,23 @@ public class MysqlDumpTest {
             }
 
         });
-        controller.setLogPositionManager(new AbstractCanalLogPositionManager() {
-
-            public void persistLogPosition(String destination, LogPosition logPosition) {
-                System.out.println(logPosition);
-            }
+        controller.setLogPositionManager(new AbstractLogPositionManager() {
 
             @Override
             public LogPosition getLatestIndexBy(String destination) {
                 return null;
+            }
+
+            @Override
+            public void persistLogPosition(String destination, LogPosition logPosition) throws CanalParseException {
+                System.out.println(logPosition);
             }
         });
 
         controller.start();
 
         try {
-            Thread.sleep(100 * 1000L);
+            Thread.sleep(100 * 1000 * 1000L);
         } catch (InterruptedException e) {
             Assert.fail(e.getMessage());
         }

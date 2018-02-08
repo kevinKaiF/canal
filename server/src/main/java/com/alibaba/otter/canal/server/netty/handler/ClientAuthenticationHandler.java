@@ -1,5 +1,7 @@
 package com.alibaba.otter.canal.server.netty.handler;
 
+import java.util.concurrent.TimeUnit;
+
 import org.apache.commons.lang.StringUtils;
 import org.jboss.netty.buffer.ChannelBuffer;
 import org.jboss.netty.channel.ChannelFuture;
@@ -58,7 +60,6 @@ public class ClientAuthenticationHandler extends SimpleChannelHandler {
                         clientAuth.getFilter());
                     try {
                         MDC.put("destination", clientIdentity.getDestination());
-                        // 客户端订阅
                         embeddedServer.subscribe(clientIdentity);
                         ctx.setAttachment(clientIdentity);// 设置状态数据
                         // 尝试启动，如果已经启动，忽略
@@ -88,10 +89,13 @@ public class ClientAuthenticationHandler extends SimpleChannelHandler {
                         if (clientAuth.getNetWriteTimeout() > 0) {
                             writeTimeout = clientAuth.getNetWriteTimeout();
                         }
+                        // fix bug: soTimeout parameter's unit from connector is
+                        // millseconds.
                         IdleStateHandler idleStateHandler = new IdleStateHandler(NettyUtils.hashedWheelTimer,
                             readTimeout,
                             writeTimeout,
-                            0);
+                            0,
+                            TimeUnit.MILLISECONDS);
                         ctx.getPipeline().addBefore(SessionHandler.class.getName(),
                             IdleStateHandler.class.getName(),
                             idleStateHandler);

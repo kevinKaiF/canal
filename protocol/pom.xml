@@ -3,12 +3,11 @@
 	<parent>
 		<groupId>com.alibaba.otter</groupId>
 		<artifactId>canal</artifactId>
-		<version>1.0.23-SNAPSHOT</version>
+		<version>1.0.26-SNAPSHOT</version>
 		<relativePath>../pom.xml</relativePath>
 	</parent>
 	<groupId>com.alibaba.otter</groupId>
 	<artifactId>canal.protocol</artifactId>
-	<description>protocol是与binlog服务器通信的数据序列化方式</description>
 	<packaging>jar</packaging>
 	<name>canal protocol module for otter ${project.version}</name>
 	<url>http://b2b-doc.alibaba-inc.com/display/opentech/Otter</url>

@@ -3,8 +3,8 @@ package com.alibaba.otter.canal.parse.inbound.mysql;
 import org.junit.Assert;
 import org.junit.Test;
 
-import com.alibaba.otter.canal.parse.inbound.mysql.dbsync.SimpleDdlParser;
-import com.alibaba.otter.canal.parse.inbound.mysql.dbsync.SimpleDdlParser.DdlResult;
+import com.alibaba.otter.canal.parse.inbound.mysql.ddl.DdlResult;
+import com.alibaba.otter.canal.parse.inbound.mysql.ddl.SimpleDdlParser;
 import com.alibaba.otter.canal.protocol.CanalEntry.EventType;
 
 public class SimpleDdlParserTest {
@@ -164,7 +164,7 @@ public class SimpleDdlParserTest {
         Assert.assertEquals("retl_mark1", result.getOriTableName());
         Assert.assertEquals("retl_mark3", result.getTableName());
 
-        //正则匹配test case
+        // 正则匹配test case
 
         queryString = "rename table totl_mark to totl_mark2";
         result = SimpleDdlParser.parse(queryString, "retl");

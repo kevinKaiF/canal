@@ -1,7 +1,6 @@
 package com.alibaba.otter.canal.filter;
 
 import org.junit.Assert;
-
 import org.junit.Test;
 
 import com.alibaba.otter.canal.filter.aviater.AviaterELFilter;
@@ -28,13 +27,6 @@ public class AviaterFilterTest {
 
         result = filter.filter("s2.t2");
         Assert.assertEquals(true, result);
-    }
-
-    @Test
-    public void test_regex1() {
-        AviaterRegexFilter filter = new AviaterRegexFilter("^(?!setsail).*\\\\..*");
-        System.out.println(filter.filter("setsail.xx"));
-        System.out.println(filter.filter("setsail11.xx"));
     }
 
     @Test

@@ -1,13 +1,21 @@
 package com.alibaba.otter.canal.parse.inbound.mysql.local;
 
-import com.alibaba.otter.canal.parse.exception.CanalParseException;
+import java.io.File;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Timer;
+import java.util.TimerTask;
+import java.util.concurrent.locks.Condition;
+import java.util.concurrent.locks.ReentrantLock;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.filefilter.IOFileFilter;
 
-import java.io.File;
-import java.util.*;
-import java.util.concurrent.locks.Condition;
-import java.util.concurrent.locks.ReentrantLock;
+import com.alibaba.otter.canal.parse.exception.CanalParseException;
 
 /**
  * 维护binlog文件列表
@@ -186,7 +194,9 @@ public class BinLogFileQueue {
         files.addAll(FileUtils.listFiles(directory, new IOFileFilter() {
 
             public boolean accept(File file) {
-                return file.getName().startsWith(baseName);
+                Pattern pattern = Pattern.compile("\\d+$");
+                Matcher matcher = pattern.matcher(file.getName());
+                return file.getName().startsWith(baseName) && matcher.find();
             }
 
             public boolean accept(File dir, String name) {

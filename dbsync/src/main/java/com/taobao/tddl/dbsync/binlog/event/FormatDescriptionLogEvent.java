@@ -141,6 +141,11 @@ public final class FormatDescriptionLogEvent extends StartLogEventV3 {
         }
     }
 
+    public FormatDescriptionLogEvent(final int binlogVersion, int binlogChecksum){
+        this(binlogVersion);
+        this.header.checksumAlg = binlogChecksum;
+    }
+
     public FormatDescriptionLogEvent(final int binlogVersion){
         this.binlogVersion = binlogVersion;
 

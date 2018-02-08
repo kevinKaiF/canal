@@ -2,12 +2,10 @@ package com.alibaba.otter.canal.parse.inbound.mysql;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
-import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
 import java.util.List;
 
-import com.taobao.tddl.dbsync.binlog.LogPosition;
-import org.apache.commons.lang.exception.ExceptionUtils;
+import org.apache.commons.lang.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -16,37 +14,60 @@ import com.alibaba.otter.canal.parse.driver.mysql.MysqlQueryExecutor;
 import com.alibaba.otter.canal.parse.driver.mysql.MysqlUpdateExecutor;
 import com.alibaba.otter.canal.parse.driver.mysql.packets.HeaderPacket;
 import com.alibaba.otter.canal.parse.driver.mysql.packets.client.BinlogDumpCommandPacket;
+import com.alibaba.otter.canal.parse.driver.mysql.packets.client.RegisterSlaveCommandPacket;
+import com.alibaba.otter.canal.parse.driver.mysql.packets.client.SemiAckCommandPacket;
+import com.alibaba.otter.canal.parse.driver.mysql.packets.server.ErrorPacket;
 import com.alibaba.otter.canal.parse.driver.mysql.packets.server.ResultSetPacket;
 import com.alibaba.otter.canal.parse.driver.mysql.utils.PacketManager;
 import com.alibaba.otter.canal.parse.exception.CanalParseException;
 import com.alibaba.otter.canal.parse.inbound.ErosaConnection;
 import com.alibaba.otter.canal.parse.inbound.SinkFunction;
 import com.alibaba.otter.canal.parse.inbound.mysql.dbsync.DirectLogFetcher;
+import com.alibaba.otter.canal.parse.support.AuthenticationInfo;
 import com.taobao.tddl.dbsync.binlog.LogContext;
 import com.taobao.tddl.dbsync.binlog.LogDecoder;
 import com.taobao.tddl.dbsync.binlog.LogEvent;
 
 public class MysqlConnection implements ErosaConnection {
 
-    private static final Logger logger  = LoggerFactory.getLogger(MysqlConnection.class);
+    private static final Logger logger      = LoggerFactory.getLogger(MysqlConnection.class);
 
     private MysqlConnector      connector;
     private long                slaveId;
-    private Charset             charset = Charset.forName("UTF-8");
+    private Charset             charset     = Charset.forName("UTF-8");
     private BinlogFormat        binlogFormat;
     private BinlogImage         binlogImage;
+
+    // tsdb releated
+    private AuthenticationInfo  authInfo;
+    protected int               connTimeout = 5 * 1000;                                      // 5秒
+    protected int               soTimeout   = 60 * 60 * 1000;                                // 1小时
 
     public MysqlConnection(){
     }
 
     public MysqlConnection(InetSocketAddress address, String username, String password){
-
+        authInfo = new AuthenticationInfo();
+        authInfo.setAddress(address);
+        authInfo.setUsername(username);
+        authInfo.setPassword(password);
         connector = new MysqlConnector(address, username, password);
+        // 将connection里面的参数透传下
+        connector.setSoTimeout(soTimeout);
+        connector.setConnTimeout(connTimeout);
     }
 
     public MysqlConnection(InetSocketAddress address, String username, String password, byte charsetNumber,
                            String defaultSchema){
+        authInfo = new AuthenticationInfo();
+        authInfo.setAddress(address);
+        authInfo.setUsername(username);
+        authInfo.setPassword(password);
+        authInfo.setDefaultDatabaseName(defaultSchema);
         connector = new MysqlConnector(address, username, password, charsetNumber, defaultSchema);
+        // 将connection里面的参数透传下
+        connector.setSoTimeout(soTimeout);
+        connector.setConnTimeout(connTimeout);
     }
 
     public void connect() throws IOException {
@@ -70,6 +91,11 @@ public class MysqlConnection implements ErosaConnection {
         return exector.query(cmd);
     }
 
+    public List<ResultSetPacket> queryMulti(String cmd) throws IOException {
+        MysqlQueryExecutor exector = new MysqlQueryExecutor(connector);
+        return exector.queryMulti(cmd);
+    }
+
     public void update(String cmd) throws IOException {
         MysqlUpdateExecutor exector = new MysqlUpdateExecutor(connector);
         exector.update(cmd);
@@ -91,7 +117,6 @@ public class MysqlConnection implements ErosaConnection {
         decoder.handle(LogEvent.QUERY_EVENT);
         decoder.handle(LogEvent.XID_EVENT);
         LogContext context = new LogContext();
-        context.setLogPosition(new LogPosition(binlogfilename));
         while (fetcher.fetch()) {
             LogEvent event = null;
             event = decoder.decode(fetcher, context);
@@ -108,12 +133,12 @@ public class MysqlConnection implements ErosaConnection {
 
     public void dump(String binlogfilename, Long binlogPosition, SinkFunction func) throws IOException {
         updateSettings();
+        sendRegisterSlave();
         sendBinlogDump(binlogfilename, binlogPosition);
         DirectLogFetcher fetcher = new DirectLogFetcher(connector.getReceiveBufferSize());
         fetcher.start(connector.getChannel());
         LogDecoder decoder = new LogDecoder(LogEvent.UNKNOWN_EVENT, LogEvent.ENUM_END_EVENT);
         LogContext context = new LogContext();
-        context.setLogPosition(new LogPosition(binlogfilename));
         while (fetcher.fetch()) {
             LogEvent event = null;
             event = decoder.decode(fetcher, context);
@@ -125,11 +150,45 @@ public class MysqlConnection implements ErosaConnection {
             if (!func.sink(event)) {
                 break;
             }
+
+            if (event.getSemival() == 1) {
+                sendSemiAck(context.getLogPosition().getFileName(), binlogPosition);
+            }
         }
     }
 
     public void dump(long timestamp, SinkFunction func) throws IOException {
         throw new NullPointerException("Not implement yet");
+    }
+
+    private void sendRegisterSlave() throws IOException {
+        RegisterSlaveCommandPacket cmd = new RegisterSlaveCommandPacket();
+        cmd.reportHost = authInfo.getAddress().getAddress().getHostAddress();
+        cmd.reportPasswd = authInfo.getPassword();
+        cmd.reportUser = authInfo.getUsername();
+        cmd.reportPort = authInfo.getAddress().getPort(); // 暂时先用master节点的port
+        cmd.serverId = this.slaveId;
+        byte[] cmdBody = cmd.toBytes();
+
+        logger.info("Register slave {}", cmd);
+
+        HeaderPacket header = new HeaderPacket();
+        header.setPacketBodyLength(cmdBody.length);
+        header.setPacketSequenceNumber((byte) 0x00);
+        PacketManager.writePkg(connector.getChannel(), header.toBytes(), cmdBody);
+
+        header = PacketManager.readHeader(connector.getChannel(), 4);
+        byte[] body = PacketManager.readBytes(connector.getChannel(), header.getPacketBodyLength());
+        assert body != null;
+        if (body[0] < 0) {
+            if (body[0] == -1) {
+                ErrorPacket err = new ErrorPacket();
+                err.fromBytes(body);
+                throw new IOException("Error When doing Register slave:" + err.toString());
+            } else {
+                throw new IOException("unpexpected packet with field_count=" + body[0]);
+            }
+        }
     }
 
     private void sendBinlogDump(String binlogfilename, Long binlogPosition) throws IOException {
@@ -143,10 +202,22 @@ public class MysqlConnection implements ErosaConnection {
         HeaderPacket binlogDumpHeader = new HeaderPacket();
         binlogDumpHeader.setPacketBodyLength(cmdBody.length);
         binlogDumpHeader.setPacketSequenceNumber((byte) 0x00);
-        PacketManager.write(connector.getChannel(), new ByteBuffer[] { ByteBuffer.wrap(binlogDumpHeader.toBytes()),
-                ByteBuffer.wrap(cmdBody) });
-
+        PacketManager.writePkg(connector.getChannel(), binlogDumpHeader.toBytes(), cmdBody);
         connector.setDumping(true);
+    }
+
+    private void sendSemiAck(String binlogfilename, Long binlogPosition) throws IOException {
+        SemiAckCommandPacket semiAckCmd = new SemiAckCommandPacket();
+        semiAckCmd.binlogFileName = binlogfilename;
+        semiAckCmd.binlogPosition = binlogPosition;
+
+        byte[] cmdBody = semiAckCmd.toBytes();
+
+        logger.info("SEMI ACK with position:{}", semiAckCmd);
+        HeaderPacket semiAckHeader = new HeaderPacket();
+        semiAckHeader.setPacketBodyLength(cmdBody.length);
+        semiAckHeader.setPacketSequenceNumber((byte) 0x00);
+        PacketManager.writePkg(connector.getChannel(), semiAckHeader.toBytes(), cmdBody);
     }
 
     public MysqlConnection fork() {
@@ -154,6 +225,8 @@ public class MysqlConnection implements ErosaConnection {
         connection.setCharset(getCharset());
         connection.setSlaveId(getSlaveId());
         connection.setConnector(connector.fork());
+        // set authInfo
+        connection.setAuthInfo(authInfo);
         return connection;
     }
 
@@ -174,25 +247,25 @@ public class MysqlConnection implements ErosaConnection {
         try {
             update("set wait_timeout=9999999");
         } catch (Exception e) {
-            logger.warn(ExceptionUtils.getFullStackTrace(e));
+            logger.warn("update wait_timeout failed", e);
         }
         try {
             update("set net_write_timeout=1800");
         } catch (Exception e) {
-            logger.warn(ExceptionUtils.getFullStackTrace(e));
+            logger.warn("update net_write_timeout failed", e);
         }
 
         try {
             update("set net_read_timeout=1800");
         } catch (Exception e) {
-            logger.warn(ExceptionUtils.getFullStackTrace(e));
+            logger.warn("update net_read_timeout failed", e);
         }
 
         try {
             // 设置服务端返回结果时不做编码转化，直接按照数据库的二进制编码进行发送，由客户端自己根据需求进行编码转化
             update("set names 'binary'");
         } catch (Exception e) {
-            logger.warn(ExceptionUtils.getFullStackTrace(e));
+            logger.warn("update names failed", e);
         }
 
         try {
@@ -202,14 +275,24 @@ public class MysqlConnection implements ErosaConnection {
             // 但也不能乱设置，需要和mysql server的checksum配置一致，不然RotateLogEvent会出现乱码
             update("set @master_binlog_checksum= '@@global.binlog_checksum'");
         } catch (Exception e) {
-            logger.warn(ExceptionUtils.getFullStackTrace(e));
+            logger.warn("update master_binlog_checksum failed", e);
+        }
+
+        try {
+            // 参考:https://github.com/alibaba/canal/issues/284
+            // mysql5.6需要设置slave_uuid避免被server kill链接
+            update("set @slave_uuid=uuid()");
+        } catch (Exception e) {
+            if (!StringUtils.contains(e.getMessage(), "Unknown system variable")) {
+                logger.warn("update slave_uuid failed", e);
+            }
         }
 
         try {
             // mariadb针对特殊的类型，需要设置session变量
             update("SET @mariadb_slave_capability='" + LogEvent.MARIA_SLAVE_CAPABILITY_MINE + "'");
         } catch (Exception e) {
-            logger.warn(ExceptionUtils.getFullStackTrace(e));
+            logger.warn("update mariadb_slave_capability failed", e);
         }
     }
 
@@ -217,7 +300,6 @@ public class MysqlConnection implements ErosaConnection {
      * 获取一下binlog format格式
      */
     private void loadBinlogFormat() {
-        // 发送数据包，查询命令结果
         ResultSetPacket rs = null;
         try {
             rs = query("show variables like 'binlog_format'");
@@ -380,4 +462,23 @@ public class MysqlConnection implements ErosaConnection {
         return binlogImage;
     }
 
+    public InetSocketAddress getAddress() {
+        return authInfo.getAddress();
+    }
+
+    public void setConnTimeout(int connTimeout) {
+        this.connTimeout = connTimeout;
+    }
+
+    public void setSoTimeout(int soTimeout) {
+        this.soTimeout = soTimeout;
+    }
+
+    public AuthenticationInfo getAuthInfo() {
+        return authInfo;
+    }
+
+    public void setAuthInfo(AuthenticationInfo authInfo) {
+        this.authInfo = authInfo;
+    }
 }

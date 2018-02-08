@@ -3,11 +3,10 @@
 	<parent>
 		<groupId>com.alibaba.otter</groupId>
 		<artifactId>canal</artifactId>
-		<version>1.0.23-SNAPSHOT</version>
+		<version>1.0.26-SNAPSHOT</version>
 		<relativePath>../pom.xml</relativePath>
 	</parent>
 	<groupId>com.alibaba.otter</groupId>
-	<description>sink是对接收到的binlog的数据的过滤处理</description>
 	<artifactId>canal.sink</artifactId>
 	<packaging>jar</packaging>
 	<name>canal sink module for otter ${project.version}</name>

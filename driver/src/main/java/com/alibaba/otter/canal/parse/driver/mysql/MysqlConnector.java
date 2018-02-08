@@ -1,22 +1,22 @@
 package com.alibaba.otter.canal.parse.driver.mysql;
 
+import java.io.IOException;
+import java.net.InetSocketAddress;
+import java.util.concurrent.atomic.AtomicBoolean;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.alibaba.otter.canal.parse.driver.mysql.packets.HeaderPacket;
 import com.alibaba.otter.canal.parse.driver.mysql.packets.client.ClientAuthenticationPacket;
 import com.alibaba.otter.canal.parse.driver.mysql.packets.client.QuitCommandPacket;
 import com.alibaba.otter.canal.parse.driver.mysql.packets.server.ErrorPacket;
 import com.alibaba.otter.canal.parse.driver.mysql.packets.server.HandshakeInitializationPacket;
 import com.alibaba.otter.canal.parse.driver.mysql.packets.server.Reply323Packet;
+import com.alibaba.otter.canal.parse.driver.mysql.socket.SocketChannel;
+import com.alibaba.otter.canal.parse.driver.mysql.socket.SocketChannelPool;
 import com.alibaba.otter.canal.parse.driver.mysql.utils.MySQLPasswordEncrypter;
 import com.alibaba.otter.canal.parse.driver.mysql.utils.PacketManager;
-import org.apache.commons.lang.exception.ExceptionUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import java.io.IOException;
-import java.net.InetSocketAddress;
-import java.nio.ByteBuffer;
-import java.nio.channels.SocketChannel;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * 基于mysql socket协议的链接实现
@@ -26,22 +26,25 @@ import java.util.concurrent.atomic.AtomicBoolean;
  */
 public class MysqlConnector {
 
-    private static final Logger logger = LoggerFactory.getLogger(MysqlConnector.class);
-    private InetSocketAddress address;
-    private String username;
-    private String password;
+    private static final Logger logger            = LoggerFactory.getLogger(MysqlConnector.class);
+    private InetSocketAddress   address;
+    private String              username;
+    private String              password;
 
-    private byte charsetNumber = 33;
-    private String defaultSchema = "retl";
-    private int soTimeout = 30 * 1000;
-    private int receiveBufferSize = 16 * 1024;
-    private int sendBufferSize = 16 * 1024;
+    private byte                charsetNumber     = 33;
+    private String              defaultSchema     = "retl";
+    private int                 soTimeout         = 30 * 1000;
+    private int                 connTimeout       = 5 * 1000;
+    private int                 receiveBufferSize = 16 * 1024;
+    private int                 sendBufferSize    = 16 * 1024;
 
-    private SocketChannel channel;
-    private volatile boolean dumping = false;
+    private SocketChannel       channel;
+    private volatile boolean    dumping           = false;
     // mysql connectinnId
-    private long connectionId = -1;
-    private AtomicBoolean connected = new AtomicBoolean(false);
+    private long                connectionId      = -1;
+    private AtomicBoolean       connected         = new AtomicBoolean(false);
+
+    public static final int timeout = 3000; // 3s
 
     public MysqlConnector(){
     }
@@ -63,14 +66,12 @@ public class MysqlConnector {
     public void connect() throws IOException {
         if (connected.compareAndSet(false, true)) {
             try {
-                channel = SocketChannel.open();
-                configChannel(channel);
+                channel = SocketChannelPool.open(address);
                 logger.info("connect MysqlConnection to {}...", address);
-                channel.connect(address);
                 negotiate(channel);
             } catch (Exception e) {
                 disconnect();
-                throw new IOException("connect " + this.address + " failure:" + ExceptionUtils.getStackTrace(e));
+                throw new IOException("connect " + this.address + " failure", e);
             }
         } else {
             logger.error("the channel can't be connected twice.");
@@ -90,7 +91,7 @@ public class MysqlConnector {
                 }
                 logger.info("disConnect MysqlConnection to {}...", address);
             } catch (Exception e) {
-                throw new IOException("disconnect " + this.address + " failure:" + ExceptionUtils.getStackTrace(e));
+                throw new IOException("disconnect " + this.address + " failure", e);
             }
 
             // 执行一次quit
@@ -103,7 +104,7 @@ public class MysqlConnector {
                     executor.update("KILL CONNECTION " + connectionId);
                 } catch (Exception e) {
                     // 忽略具体异常
-                    logger.warn("KILL DUMP " + connectionId + " failure:" + ExceptionUtils.getStackTrace(e));
+                    logger.info("KILL DUMP " + connectionId + " failure", e);
                 } finally {
                     if (connector != null) {
                         connector.disconnect();
@@ -131,6 +132,7 @@ public class MysqlConnector {
         connector.setReceiveBufferSize(getReceiveBufferSize());
         connector.setSendBufferSize(getSendBufferSize());
         connector.setSoTimeout(getSoTimeout());
+        connector.setConnTimeout(connTimeout);
         return connector;
     }
 
@@ -141,26 +143,12 @@ public class MysqlConnector {
         HeaderPacket quitHeader = new HeaderPacket();
         quitHeader.setPacketBodyLength(cmdBody.length);
         quitHeader.setPacketSequenceNumber((byte) 0x00);
-        PacketManager.write(channel,
-            new ByteBuffer[] { ByteBuffer.wrap(quitHeader.toBytes()), ByteBuffer.wrap(cmdBody) });
-    }
-
-    // ====================== help method ====================
-
-    private void configChannel(SocketChannel channel) throws IOException {
-        channel.socket().setKeepAlive(true);
-        channel.socket().setReuseAddress(true);
-        channel.socket().setSoTimeout(soTimeout);
-        channel.socket().setTcpNoDelay(true);
-        channel.socket().setReceiveBufferSize(receiveBufferSize);
-        channel.socket().setSendBufferSize(sendBufferSize);
+        PacketManager.writePkg(channel, quitHeader.toBytes(), cmdBody);
     }
 
     private void negotiate(SocketChannel channel) throws IOException {
-        // 读取头部数据
-        HeaderPacket header = PacketManager.readHeader(channel, 4);
-        // 读取body
-        byte[] body = PacketManager.readBytes(channel, header.getPacketBodyLength());
+        HeaderPacket header = PacketManager.readHeader(channel, 4, timeout);
+        byte[] body = PacketManager.readBytes(channel, header.getPacketBodyLength(), timeout);
         if (body[0] < 0) {// check field_count
             if (body[0] == -1) {
                 ErrorPacket error = new ErrorPacket();
@@ -172,8 +160,6 @@ public class MysqlConnector {
                 throw new IOException("unpexpected packet with field_count=" + body[0]);
             }
         }
-
-        // 反序列化握手协议数据
         HandshakeInitializationPacket handshakePacket = new HandshakeInitializationPacket();
         handshakePacket.fromBytes(body);
         connectionId = handshakePacket.threadId; // 记录一下connection
@@ -187,26 +173,21 @@ public class MysqlConnector {
         clientAuth.setPassword(password);
         clientAuth.setServerCapabilities(handshakePacket.serverCapabilities);
         clientAuth.setDatabaseName(defaultSchema);
-        // 复制seed和restOfScrambleBuff的数据
         clientAuth.setScrumbleBuff(joinAndCreateScrumbleBuff(handshakePacket));
 
         byte[] clientAuthPkgBody = clientAuth.toBytes();
-        // 序列化ClientAuthenticationPacket的包数据
         HeaderPacket h = new HeaderPacket();
         h.setPacketBodyLength(clientAuthPkgBody.length);
-        // 序列号增1
         h.setPacketSequenceNumber((byte) (header.getPacketSequenceNumber() + 1));
-        // 发送头部数据，和clientAuthPkgBody 数据
-        PacketManager.write(channel,
-            new ByteBuffer[] { ByteBuffer.wrap(h.toBytes()), ByteBuffer.wrap(clientAuthPkgBody) });
+
+        PacketManager.writePkg(channel, h.toBytes(), clientAuthPkgBody);
         logger.info("client authentication packet is sent out.");
 
         // check auth result
         header = null;
-        // 再次读取服务端的响应
         header = PacketManager.readHeader(channel, 4);
         body = null;
-        body = PacketManager.readBytes(channel, header.getPacketBodyLength());
+        body = PacketManager.readBytes(channel, header.getPacketBodyLength(), timeout);
         assert body != null;
         if (body[0] < 0) {
             if (body[0] == -1) {
@@ -235,7 +216,7 @@ public class MysqlConnector {
         h323.setPacketBodyLength(b323Body.length);
         h323.setPacketSequenceNumber((byte) (packetSequenceNumber + 1));
 
-        PacketManager.write(channel, new ByteBuffer[] { ByteBuffer.wrap(h323.toBytes()), ByteBuffer.wrap(b323Body) });
+        PacketManager.writePkg(channel, h323.toBytes(), b323Body);
         logger.info("client 323 authentication packet is sent out.");
         // check auth result
         HeaderPacket header = PacketManager.readHeader(channel, 4);
@@ -346,6 +327,18 @@ public class MysqlConnector {
 
     public void setDumping(boolean dumping) {
         this.dumping = dumping;
+    }
+
+    public int getConnTimeout() {
+        return connTimeout;
+    }
+
+    public void setConnTimeout(int connTimeout) {
+        this.connTimeout = connTimeout;
+    }
+
+    public String getPassword() {
+        return password;
     }
 
 }
