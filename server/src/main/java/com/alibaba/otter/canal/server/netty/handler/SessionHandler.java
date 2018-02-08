@@ -1,38 +1,26 @@
 package com.alibaba.otter.canal.server.netty.handler;
 
-import java.util.List;
-import java.util.concurrent.TimeUnit;
-
+import com.alibaba.otter.canal.common.zookeeper.running.ServerRunningMonitor;
+import com.alibaba.otter.canal.common.zookeeper.running.ServerRunningMonitors;
+import com.alibaba.otter.canal.protocol.CanalEntry.Entry;
+import com.alibaba.otter.canal.protocol.CanalPacket;
+import com.alibaba.otter.canal.protocol.CanalPacket.*;
+import com.alibaba.otter.canal.protocol.ClientIdentity;
+import com.alibaba.otter.canal.protocol.Message;
+import com.alibaba.otter.canal.server.embedded.CanalServerWithEmbedded;
+import com.alibaba.otter.canal.server.netty.NettyUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.exception.ExceptionUtils;
 import org.jboss.netty.buffer.ChannelBuffer;
-import org.jboss.netty.channel.ChannelHandlerContext;
-import org.jboss.netty.channel.ChannelStateEvent;
-import org.jboss.netty.channel.ExceptionEvent;
-import org.jboss.netty.channel.MessageEvent;
-import org.jboss.netty.channel.SimpleChannelHandler;
+import org.jboss.netty.channel.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
 import org.slf4j.helpers.MessageFormatter;
 import org.springframework.util.CollectionUtils;
 
-import com.alibaba.otter.canal.common.zookeeper.running.ServerRunningMonitor;
-import com.alibaba.otter.canal.common.zookeeper.running.ServerRunningMonitors;
-import com.alibaba.otter.canal.protocol.CanalEntry.Entry;
-import com.alibaba.otter.canal.protocol.CanalPacket;
-import com.alibaba.otter.canal.protocol.CanalPacket.ClientAck;
-import com.alibaba.otter.canal.protocol.CanalPacket.ClientRollback;
-import com.alibaba.otter.canal.protocol.CanalPacket.Get;
-import com.alibaba.otter.canal.protocol.CanalPacket.Messages;
-import com.alibaba.otter.canal.protocol.CanalPacket.Packet;
-import com.alibaba.otter.canal.protocol.CanalPacket.PacketType;
-import com.alibaba.otter.canal.protocol.CanalPacket.Sub;
-import com.alibaba.otter.canal.protocol.CanalPacket.Unsub;
-import com.alibaba.otter.canal.protocol.ClientIdentity;
-import com.alibaba.otter.canal.protocol.Message;
-import com.alibaba.otter.canal.server.embedded.CanalServerWithEmbedded;
-import com.alibaba.otter.canal.server.netty.NettyUtils;
+import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 /**
  * 处理具体的客户端请求

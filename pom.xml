@@ -66,16 +66,16 @@
                 <enabled>false</enabled>
             </snapshots>
         </repository>
-        <repository>
-            <id>alibaba</id>
-            <url>http://code.alibabatech.com/mvn/releases/</url>
-            <releases>
-                <enabled>true</enabled>
-            </releases>
-            <snapshots>
-                <enabled>false</enabled>
-            </snapshots>
-        </repository>
+        <!--<repository>-->
+            <!--<id>alibaba</id>-->
+            <!--<url>http://code.alibabatech.com/mvn/releases/</url>-->
+            <!--<releases>-->
+                <!--<enabled>true</enabled>-->
+            <!--</releases>-->
+            <!--<snapshots>-->
+                <!--<enabled>false</enabled>-->
+            <!--</snapshots>-->
+        <!--</repository>-->
         <repository>
             <id>sonatype</id>
             <name>sonatype</name>
@@ -254,7 +254,7 @@
             <dependency>
                 <groupId>com.alibaba</groupId>
                 <artifactId>druid</artifactId>
-                <version>1.1.7-preview_0</version>
+                <version>1.1.7</version>
             </dependency>
             <!-- log -->
             <dependency>

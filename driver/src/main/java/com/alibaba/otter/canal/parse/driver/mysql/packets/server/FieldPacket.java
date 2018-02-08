@@ -1,10 +1,10 @@
 package com.alibaba.otter.canal.parse.driver.mysql.packets.server;
 
-import java.io.IOException;
-
 import com.alibaba.otter.canal.parse.driver.mysql.packets.PacketWithHeaderPacket;
 import com.alibaba.otter.canal.parse.driver.mysql.utils.ByteHelper;
 import com.alibaba.otter.canal.parse.driver.mysql.utils.LengthCodedStringReader;
+
+import java.io.IOException;
 
 public class FieldPacket extends PacketWithHeaderPacket {
 
