@@ -1,10 +1,10 @@
 package com.alibaba.otter.canal.parse.driver.mysql.packets.server;
 
-import java.io.IOException;
-
 import com.alibaba.otter.canal.parse.driver.mysql.packets.PacketWithHeaderPacket;
 import com.alibaba.otter.canal.parse.driver.mysql.utils.ByteHelper;
 import com.alibaba.otter.canal.parse.driver.mysql.utils.LengthCodedStringReader;
+
+import java.io.IOException;
 
 public class FieldPacket extends PacketWithHeaderPacket {
 
@@ -56,7 +56,7 @@ public class FieldPacket extends PacketWithHeaderPacket {
         this.name = reader.readLengthCodedString(data);
         this.originalName = reader.readLengthCodedString(data);
         index = reader.getIndex();
-        //
+        // skip filter
         index++;
         //
         this.character = ByteHelper.readUnsignedShortLittleEndian(data, index);
@@ -73,8 +73,8 @@ public class FieldPacket extends PacketWithHeaderPacket {
         //
         this.decimals = data[index];
         index++;
-        //
-        index += 2;//skip filter
+        // skip filter
+        index += 2;//
         //
         if (index < data.length) {
             reader.setIndex(index);

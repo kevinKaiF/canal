@@ -1,11 +1,11 @@
 package com.alibaba.otter.canal.parse.driver.mysql.packets.server;
 
-import java.io.IOException;
-
 import com.alibaba.otter.canal.parse.driver.mysql.packets.HeaderPacket;
 import com.alibaba.otter.canal.parse.driver.mysql.packets.PacketWithHeaderPacket;
 import com.alibaba.otter.canal.parse.driver.mysql.utils.ByteHelper;
 import com.alibaba.otter.canal.parse.driver.mysql.utils.MSC;
+
+import java.io.IOException;
 
 /**
  * MySQL Handshake Initialization Packet.<br>
@@ -55,6 +55,7 @@ public class HandshakeInitializationPacket extends PacketWithHeaderPacket {
         // 2. read server_version
         byte[] serverVersionBytes = ByteHelper.readNullTerminatedBytes(data, index);
         serverVersion = new String(serverVersionBytes);
+        // 这里加1的原因是有1个字节的0x00，作为结束标志
         index += (serverVersionBytes.length + 1);
         // 3. read thread_id
         threadId = ByteHelper.readUnsignedIntLittleEndian(data, index);
@@ -62,6 +63,7 @@ public class HandshakeInitializationPacket extends PacketWithHeaderPacket {
         // 4. read scramble_buff
         seed = ByteHelper.readFixedLengthBytes(data, index, 8);
         index += 8;
+        // skip filter
         index += 1; // 1 byte (filler) always 0x00
         // 5. read server_capabilities
         this.serverCapabilities = ByteHelper.readUnsignedShortLittleEndian(data, index);

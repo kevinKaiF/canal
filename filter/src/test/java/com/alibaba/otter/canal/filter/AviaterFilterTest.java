@@ -31,6 +31,13 @@ public class AviaterFilterTest {
     }
 
     @Test
+    public void test_regex1() {
+        AviaterRegexFilter filter = new AviaterRegexFilter("^(?!setsail).*\\\\..*");
+        System.out.println(filter.filter("setsail.xx"));
+        System.out.println(filter.filter("setsail11.xx"));
+    }
+
+    @Test
     public void test_regex() {
         AviaterRegexFilter filter = new AviaterRegexFilter("s1\\..*,s2\\..*");
         boolean result = filter.filter("s1.t1");
